@@ -1,7 +1,7 @@
 {
-  "name": "chrome-extension-react-template",
-  "private": true,
-  "version": "0.0.0",
+  "name": "aggie-registration-beautifier",
+  "version": "1.0.0",
+  "description": "Chrome extension to beautify Texas A&M course registration",
   "type": "module",
   "scripts": {
     "dev": "vite",

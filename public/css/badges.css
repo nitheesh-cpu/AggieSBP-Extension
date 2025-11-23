@@ -1,0 +1,117 @@
+/* Badge Styles - Used across course cards and schedule pages */
+
+/* Course Card Badges */
+.course-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    font-size: 0.75em;
+    font-weight: bold;
+    border-radius: 4px;
+    color: white;
+}
+
+.honors-badge {
+    background-color: #9c27b0;
+}
+
+.restricted-badge {
+    background-color: #f44336;
+}
+
+.prereq-badge {
+    background-color: #ff9800;
+}
+
+.disabled-badge {
+    background-color: #757575 !important;
+}
+
+/* Schedule/Add Course Badges */
+.add-course-badge {
+    padding: 2px 5px;
+    margin-right: 2px;
+    border-radius: 3px;
+    font-size: 0.85em;
+    font-weight: 600;
+    color: white;
+    margin-bottom: 2px;
+}
+
+.badge-prerequisites {
+    background-color: #28a745;
+}
+
+.badge-restrictions {
+    background-color: #dc3545;
+}
+
+.badge-honors {
+    background-color: #9c27b0;
+}
+
+.badge-free-textbook {
+    background-color: #007bff;
+}
+
+.badge-low-cost-textbook {
+    background-color: #17a2b8;
+}
+
+.badge-disabled {
+    background-color: #6c757d;
+}
+
+/* Schedule Course Badges */
+.schedule-course-badges {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.schedule-course-badge {
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 0.9em;
+    font-weight: 600;
+    color: white;
+}
+
+.schedule-course-badges-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.schedule-course-badge {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    color: #495057;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid #dee2e6;
+    display: inline-block;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.schedule-course-badge:hover {
+    background: linear-gradient(135deg, #500000 0%, #700000 100%);
+    color: white;
+    border-color: #500000;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(80, 0, 0, 0.2);
+}
+
+/* Responsive adjustments for badges */
+@media (max-width: 768px) {
+    .schedule-course-badges-container {
+        gap: 4px;
+    }
+
+    .schedule-course-badge {
+        font-size: 11px;
+        padding: 3px 8px;
+    }
+}

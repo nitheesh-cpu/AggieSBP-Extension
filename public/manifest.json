@@ -1,13 +1,56 @@
 {
-    "manifest_version": 3,
-    "name": "React Chrome Extension",
-    "version": "1.0.0",
-    "description": "A simple React app as a Chrome extension",
-    "action": {
-      "default_popup": "index.html"
-    },
-    "background": {
-      "service_worker": "background.js"
-    },
-    "permissions": []
+  "manifest_version": 3,
+  "name": "Aggie Schedule Builder Plus",
+  "version": "2.0",
+  "description": "Enhances the Texas A&M course registration interface with a modern, user-friendly design",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://tamu.collegescheduler.com/*"
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "css/*.css",
+        "templates/*.html"
+      ],
+      "matches": [
+        "https://tamu.collegescheduler.com/*"
+      ]
+    }
+  ],
+  "action": {
+    "default_popup": "index.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://tamu.collegescheduler.com/*"
+      ],
+      "js": [
+        "content/main.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'"
   }
+}
