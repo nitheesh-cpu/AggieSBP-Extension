@@ -1,5 +1,16 @@
 # Aggie Registration Beautifier - Refactored Structure
 
+## Changelog
+
+### v3.0.1
+- Added ability to check overall summary or other course summary when there's not enough data on the specific course
+
+### v3.0
+- Scrapped the beautification functionality and made it purely functional
+- Added professor compare on the sections page that shows the available professors for that semester
+
+---
+
 This Chrome extension has been refactored from a monolithic single-file structure to a modern, modular architecture using Vite.
 
 ## Project Structure
