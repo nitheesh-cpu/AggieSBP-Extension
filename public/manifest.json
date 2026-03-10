@@ -1,12 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Aggie Schedule Builder Plus",
-  "version": "2.0",
-  "description": "Enhances the Texas A&M course registration interface with a modern, user-friendly design",
+  "name": "Professor Compare - Aggie Schedule Builder Plus",
+  "version": "3.0.1",
+  "description": "Compare professors directly on Texas A&M registration pages. View ratings, AI summaries, and grade distributions at a glance.",
   "permissions": [
     "activeTab",
-    "storage",
-    "tabs"
+    "storage"
   ],
   "host_permissions": [
     "https://tamu.collegescheduler.com/*"
@@ -15,7 +14,9 @@
     {
       "resources": [
         "css/*.css",
-        "templates/*.html"
+        "templates/*.html",
+        "assets/*.js",
+        "assets/*.css"
       ],
       "matches": [
         "https://tamu.collegescheduler.com/*"
