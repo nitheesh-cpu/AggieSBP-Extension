@@ -65,6 +65,7 @@ export default defineConfig({
           }
           return 'assets/[name]-[hash].js';
         },
+        chunkFileNames: 'assets/[name]-[hash].js',
       },
     },
   },

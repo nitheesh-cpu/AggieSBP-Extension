@@ -21,6 +21,15 @@ export function isMainCoursesPage(): boolean {
 }
 
 /**
+ * Check if current page is the current schedule page
+ * @returns {boolean}
+ */
+export function isCurrentSchedulePage(): boolean {
+  const regex = /\/terms\/[^\/]+\/currentschedule$/;
+  return regex.test(location.href);
+}
+
+/**
  * Extract term from current URL
  * @returns {string|null}
  */
