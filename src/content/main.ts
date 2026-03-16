@@ -1,7 +1,7 @@
-import { initializeProfessorPanel } from '../components/professors-panel';
+import { initializeProfessorPanel, initializeAlertsOnlyPanel } from '../components/professors-panel';
 import { CacheUtils } from '../services/cache';
 import { store } from '../state/store';
-import { isRegistrationPage } from '../utils/page-detector';
+import { isRegistrationPage, isSchedulerAlertsPage } from '../utils/page-detector';
 import { debugLog } from '../utils/debug';
 import { exposeDebugUtils } from '../utils/debug';
 
@@ -43,6 +43,18 @@ import { exposeDebugUtils } from '../utils/debug';
       return;
     }
 
+    // /options and /cart: show button with alerts-only panel
+    if (isSchedulerAlertsPage()) {
+      isInitializing = true;
+      lastInitializedUrl = currentUrl;
+      try {
+        initializeAlertsOnlyPanel();
+      } finally {
+        isInitializing = false;
+      }
+      return;
+    }
+
     // Only run on sections pages - cleanup if not
     if (!isRegistrationPage()) {
       debugLog('Not on a sections page, cleaning up professor panel');
@@ -57,7 +69,7 @@ import { exposeDebugUtils } from '../utils/debug';
       debugLog('Current URL:', currentUrl);
       debugLog('Is sections page:', isRegistrationPage());
 
-      // Initialize professor panel
+      // Initialize combined sidebar (professors + alerts)
       await initializeProfessorPanel();
     } finally {
       isInitializing = false;

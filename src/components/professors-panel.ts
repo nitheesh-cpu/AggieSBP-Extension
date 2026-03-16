@@ -1,5 +1,6 @@
 import { getProfessorDetailsUrl, fetchCourseDataForTerm, getTermCodeFromDescription, fetchCourseData, fetchProfessorDetails, type ProfessorDetails, type CourseSummary, type OverallSummary } from '../services/professor-service';
 import { getSelectedCourseData } from '../services/api';
+import { renderAlertsTab } from './alerts-panel';
 import { extractCourseIdFromUrl, extractTermFromUrl, isRegistrationPage } from '../utils/page-detector';
 import { debugLog, errorLog } from '../utils/debug';
 import { COURSE_DETAILS_BASE } from '../config/constants';
@@ -440,7 +441,7 @@ function createProfessorPanel(courseData: { professors?: ProfessorDetails[] }, c
   const toggleBtn = document.createElement('button');
   toggleBtn.id = 'prof-toggle-btn';
   toggleBtn.className = 'prof-toggle-btn';
-  toggleBtn.innerHTML = `${ICONS.users} Professors`;
+  toggleBtn.innerHTML = `${ICONS.users} AggieSB+`;
 
   // Create panel
   const panel = document.createElement('div');
@@ -458,7 +459,26 @@ function createProfessorPanel(courseData: { professors?: ProfessorDetails[] }, c
     <button class="prof-panel-close">${ICONS.close}</button>
   `;
 
-  // Panel content
+  // Tabs container
+  const tabsHeader = document.createElement('div');
+  tabsHeader.className = 'prof-sidebar-tabs';
+  tabsHeader.innerHTML = `
+    <button class="prof-sidebar-tab active" data-tab="professors">Professors</button>
+    <button class="prof-sidebar-tab" data-tab="alerts">Seat Alerts</button>
+  `;
+
+  const tabsContent = document.createElement('div');
+  tabsContent.className = 'prof-sidebar-tabs-content';
+
+  const professorsContent = document.createElement('div');
+  professorsContent.id = 'prof-sidebar-tab-professors';
+  professorsContent.className = 'prof-sidebar-tab-pane active';
+
+  const alertsContent = document.createElement('div');
+  alertsContent.id = 'prof-sidebar-tab-alerts';
+  alertsContent.className = 'prof-sidebar-tab-pane';
+
+  // Panel content for professors
   const listContainer = document.createElement('div');
   listContainer.className = 'prof-list-container';
 
@@ -475,12 +495,33 @@ function createProfessorPanel(courseData: { professors?: ProfessorDetails[] }, c
     });
   }
 
+  professorsContent.appendChild(listContainer);
+  tabsContent.appendChild(professorsContent);
+  tabsContent.appendChild(alertsContent);
+
   panel.appendChild(header);
-  panel.appendChild(listContainer);
+  panel.appendChild(tabsHeader);
+  panel.appendChild(tabsContent);
 
   // Add to DOM
   document.body.appendChild(toggleBtn);
   document.body.appendChild(panel);
+
+  // Wire up tab switching
+  tabsHeader.querySelectorAll<HTMLButtonElement>('.prof-sidebar-tab').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.tab;
+      if (!target) return;
+      tabsHeader.querySelectorAll('.prof-sidebar-tab').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      tabsContent.querySelectorAll('.prof-sidebar-tab-pane').forEach((pane) => {
+        pane.classList.toggle('active', pane.id === `prof-sidebar-tab-${target}`);
+      });
+    });
+  });
+
+  // Render alerts tab content
+  void renderAlertsTab(alertsContent);
 
   // Apply saved theme
   loadAndApplyTheme();
@@ -604,4 +645,63 @@ export async function initializeProfessorPanel(): Promise<void> {
   } catch (error) {
     errorLog('Error fetching course data:', error);
   }
+}
+
+/**
+ * Initialize a button + panel that shows ONLY the Seat Alerts tab.
+ * Used on /options and /cart pages where professor data isn't relevant.
+ */
+export function initializeAlertsOnlyPanel(): void {
+  // Remove any existing panel/button to avoid duplication
+  document.getElementById('professor-compare-panel')?.remove();
+  document.getElementById('prof-toggle-btn')?.remove();
+
+  loadProfessorPanelStyles();
+
+  // Toggle button
+  const toggleBtn = document.createElement('button');
+  toggleBtn.id = 'prof-toggle-btn';
+  toggleBtn.className = 'prof-toggle-btn';
+  toggleBtn.innerHTML = `${ICONS.users} AggieSB+`;
+
+  // Panel
+  const panel = document.createElement('div');
+  panel.id = 'professor-compare-panel';
+  panel.className = 'professor-compare-panel collapsed';
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'prof-panel-header';
+  header.innerHTML = `
+    <h2 class="prof-panel-title">
+      ${ICONS.users}
+      <span>Seat Alerts</span>
+    </h2>
+    <button class="prof-panel-close">${ICONS.close}</button>
+  `;
+
+  // Single content pane (alerts only — no tabs)
+  const alertsContent = document.createElement('div');
+  alertsContent.id = 'prof-sidebar-tab-alerts';
+  alertsContent.className = 'prof-sidebar-tab-pane active';
+
+  panel.appendChild(header);
+  panel.appendChild(alertsContent);
+
+  document.body.appendChild(toggleBtn);
+  document.body.appendChild(panel);
+
+  // Wire up toggle
+  toggleBtn.addEventListener('click', () => panel.classList.toggle('collapsed'));
+  header.querySelector('.prof-panel-close')?.addEventListener('click', () =>
+    panel.classList.add('collapsed')
+  );
+
+  // Render seat alerts — skip the isRegistrationPage() guard since we're on /options or /cart
+  void renderAlertsTab(alertsContent, true);
+
+  loadAndApplyTheme();
+  setupThemeListener();
+
+  debugLog('Alerts-only panel initialized (options/cart page)');
 }

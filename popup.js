@@ -1,4 +1,17 @@
 document.addEventListener('DOMContentLoaded', function () {
+    // ── Tab switching ──────────────────────────────────────────────────
+    document.querySelectorAll('.popup-tab').forEach(function (tab) {
+        tab.addEventListener('click', function () {
+            const target = tab.dataset.tab;
+            document.querySelectorAll('.popup-tab').forEach(function (t) {
+                t.classList.toggle('active', t.dataset.tab === target);
+            });
+            document.querySelectorAll('.tab-pane').forEach(function (pane) {
+                pane.classList.toggle('active', pane.id === 'tab-' + target);
+            });
+        });
+    });
+    // ──────────────────────────────────────────────────────────────────
     const beautifierCheckbox = document.getElementById('beautifierEnabled');
     const professorSidebarCheckbox = document.getElementById('professorSidebarEnabled');
     const themeToggle = document.getElementById('theme-toggle');
@@ -128,4 +141,64 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
     }
+
+    // Check auth state
+    checkAuthState();
 });
+
+function checkAuthState() {
+    const container = document.getElementById('auth-state-container');
+    if (!container) return;
+
+    // We use the background script proxy to bypass CORS as usual.
+    chrome.runtime.sendMessage({
+        type: 'API_TRACKING_FETCH',
+        payload: {
+            url: 'https://api-aggiesbp.servehttp.com/users/tracking',
+            options: {
+                method: 'GET',
+                credentials: 'include'
+            }
+        }
+    }, function(response) {
+        // Clear loading state
+        container.innerHTML = '';
+        container.classList.remove('loading-state');
+
+        if (response && response.ok) {
+            // Logged in
+            container.innerHTML = `
+                <div class="auth-info-card">
+                  <div class="auth-info-icon">👋</div>
+                  <div class="auth-info-text">
+                    <span class="auth-info-title">Connected Successfully</span>
+                    <span class="auth-info-desc">Alerts will sync to your account</span>
+                  </div>
+                </div>
+                <a href="https://aggieschedulebuilderplus.vercel.app/profile/alerts" target="_blank" class="btn btn-primary" style="grid-column: 1 / -1;">
+                  <svg class="btn-icon" style="color: white; margin-bottom: 2px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                  Manage My Alerts
+                </a>
+            `;
+        } else {
+            // Not logged in or error
+            container.innerHTML = `
+                <div class="auth-info-card logged-out">
+                  <div class="auth-info-icon">⚠️</div>
+                  <div class="auth-info-text">
+                    <span class="auth-info-title">Not Logged In</span>
+                    <span class="auth-info-desc">Seat alerts require an account</span>
+                  </div>
+                </div>
+                <a href="https://aggieschedulebuilderplus.vercel.app" target="_blank" class="btn btn-primary">
+                  <svg class="btn-icon" style="color: #fca5a5;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
+                  Log In / Sign Up
+                </a>
+                <a href="https://aggieschedulebuilderplus.vercel.app/profile/alerts" target="_blank" class="btn btn-secondary">
+                  <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                  Demo Alerts
+                </a>
+            `;
+        }
+    });
+}

@@ -1,14 +1,18 @@
 {
   "manifest_version": 3,
   "name": "Professor Compare - Aggie Schedule Builder Plus",
-  "version": "3.0.1",
+  "version": "3.1.0",
   "description": "Compare professors directly on Texas A&M registration pages. View ratings, AI summaries, and grade distributions at a glance.",
   "permissions": [
     "activeTab",
-    "storage"
+    "storage",
+    "cookies"
   ],
   "host_permissions": [
-    "https://tamu.collegescheduler.com/*"
+    "https://tamu.collegescheduler.com/*",
+    "https://api-aggiesbp.servehttp.com/*",
+    "https://aggieschedulebuilderplus.vercel.app/*",
+    "https://aggieschedulebuilderplus-dev.vercel.app/*"
   ],
   "web_accessible_resources": [
     {

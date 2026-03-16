@@ -1,55 +1,158 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-  <title>AggieSBP Professor Compare</title>
   <meta charset="UTF-8">
+  <title>AggieSBP Extension</title>
   <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
-
 <body>
-  <div class="title">AggieSBP Professor Compare</div>
-  <div class="subtitle">Compare professors on registration pages</div>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-logo">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+      </svg>
+    </div>
+    <div class="header-text">
+      <h1 class="title">AggieSB+</h1>
+      <p class="subtitle">Registration Enhanced</p>
+    </div>
+  </header>
 
-  <div class="info-container">
-    <p>📊 This extension adds a professor comparison panel to course sections pages on the Texas A&M registration
-      system.</p>
-    <p>🎓 View ratings, AI summaries, and grade distributions for each professor teaching the course.</p>
-  </div>
+  <!-- Tab Bar -->
+  <nav class="popup-tabs">
+    <button class="popup-tab active" data-tab="home">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Home
+    </button>
+    <button class="popup-tab" data-tab="help">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Help
+    </button>
+    <button class="popup-tab" data-tab="settings">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Settings
+    </button>
+  </nav>
 
-  <div class="links-section">
-    <div class="links-title">Links</div>
-    <div class="links-container">
-      <a href="https://aggieschedulebuilderplus.vercel.app" target="_blank" class="link-button website-link">
-        <span class="link-icon">🌐</span>
-        <span class="link-text">Visit Website</span>
-      </a>
-      <a href="https://chromewebstore.google.com/detail/aggie-schedule-builder-pl/glckdcnecomhlmlegmjdceblibmaljpm?hl=en"
-        target="_blank" class="link-button review-link">
-        <span class="link-icon">⭐</span>
-        <span class="link-text">Leave a Review</span>
-      </a>
-      <a href="https://tally.so/r/nWb6re" target="_blank" class="link-button feedback-link">
-        <span class="link-icon">🐛</span>
-        <span class="link-text">Report Bug / Request Feature</span>
+  <!-- ── HOME TAB ── -->
+  <main class="tab-pane active" id="tab-home">
+    <!-- Feature Overview -->
+    <div class="card info-card">
+      <div class="card-header">
+        <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        <span>Extension Active</span>
+      </div>
+      <ul class="feature-list">
+        <li><span class="emoji">👨‍🏫</span><span>In-line Professor Ratings &amp; AI Summaries</span></li>
+        <li><span class="emoji">📊</span><span>Historical Grade Distributions</span></li>
+        <li><span class="emoji">🔔</span><span>Real-time 0-Seat Section Alerts</span></li>
+      </ul>
+    </div>
+
+    <!-- Auth / Alerts section -->
+    <div class="action-section">
+      <h2 class="section-title">AggieSB+ Account</h2>
+      <div id="auth-state-container" class="action-grid loading-state">
+        <div class="auth-loading">
+          <svg class="spinner" viewBox="0 0 50 50"><circle class="path" cx="25" cy="25" r="20" fill="none" stroke-width="5"></circle></svg>
+          <span>Checking session...</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ── HELP TAB ── -->
+  <main class="tab-pane" id="tab-help">
+    <div class="help-section">
+      <div class="help-hero">
+        <span class="help-hero-icon">🔔</span>
+        <h2 class="help-title">Seat Alerts</h2>
+        <p class="help-desc">Get notified the moment a full section opens up.</p>
+      </div>
+
+      <div class="help-steps">
+        <div class="help-step">
+          <div class="help-step-num">1</div>
+          <div class="help-step-body">
+            <strong>Create a free account</strong>
+            <span>Visit <a href="https://aggieschedulebuilderplus.vercel.app" target="_blank">aggieschedulebuilderplus.vercel.app</a> and sign up with your Google account.</span>
+          </div>
+        </div>
+        <div class="help-step">
+          <div class="help-step-num">2</div>
+          <div class="help-step-body">
+            <strong>Enable notifications</strong>
+            <span>After logging in, allow browser notifications when prompted so we can ping you instantly.</span>
+          </div>
+        </div>
+        <div class="help-step">
+          <div class="help-step-num">3</div>
+          <div class="help-step-body">
+            <strong>Add a section alert</strong>
+            <span>Go to the <strong>Build Schedule</strong> page on College Scheduler, open the AggieSB+ panel and click <em>Watch</em> on any full section — or visit a course's sections page for the same button.</span>
+          </div>
+        </div>
+        <div class="help-step">
+          <div class="help-step-num">4</div>
+          <div class="help-step-body">
+            <strong>Compare professors</strong>
+            <span>Navigate to any individual course&apos;s sections page and the AggieSB+ panel will automatically appear with professor ratings, grade distributions, and AI summaries.</span>
+          </div>
+        </div>
+      </div>
+
+      <a href="https://aggieschedulebuilderplus.vercel.app" target="_blank" class="btn btn-primary help-cta">
+        <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Get Started
       </a>
     </div>
-  </div>
+  </main>
 
-  <div class="theme-section">
-    <div class="theme-toggle-container">
-      <span class="theme-icon">🌙</span>
-      <label class="toggle-switch">
-        <input type="checkbox" id="theme-toggle">
-        <span class="toggle-slider"></span>
-      </label>
-      <span id="theme-label" class="theme-label">Light Mode</span>
+  <!-- ── SETTINGS TAB ── -->
+  <main class="tab-pane" id="tab-settings">
+    <!-- Theme -->
+    <div class="card settings-card">
+      <div class="settings-group-label">Appearance</div>
+      <div class="setting-item">
+        <div class="setting-info">
+          <svg class="icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+          <span id="theme-label">Dark Mode</span>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="theme-toggle">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
     </div>
-  </div>
 
-  <div class="footer">Gig 'em! 👍</div>
+    <!-- Rate & Report -->
+    <div class="action-section">
+      <div class="settings-group-label" style="margin: 0 0 8px 4px; font-size:11px; text-transform:uppercase; letter-spacing:.5px; font-weight:700; color:#64748b;">Feedback</div>
+      <div class="links-list">
+        <a href="https://chromewebstore.google.com/detail/aggie-schedule-builder-pl/glckdcnecomhlmlegmjdceblibmaljpm?hl=en" target="_blank" class="link-item">
+          <div class="link-icon bg-yellow">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          </div>
+          <span>Rate on Chrome Web Store</span>
+          <svg class="chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </a>
+        <a href="https://tally.so/r/nWb6re" target="_blank" class="link-item">
+          <div class="link-icon bg-red">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+          </div>
+          <span>Report Issue or Bug</span>
+          <svg class="chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <p>Gig 'em! 👍</p>
+  </footer>
 
   <script src="popup.js"></script>
 </body>
-
 </html>

@@ -21,6 +21,15 @@ export function isMainCoursesPage(): boolean {
 }
 
 /**
+ * Check if current page is a collegescheduler /options or /cart page.
+ * On these pages we show the AggieSBP button but only the Seat Alerts tab.
+ * @returns {boolean}
+ */
+export function isSchedulerAlertsPage(): boolean {
+  return /\/terms\/[^\/]+\/(options|cart)$/.test(location.href);
+}
+
+/**
  * Check if current page is the current schedule page
  * @returns {boolean}
  */
@@ -51,4 +60,32 @@ export function extractCourseIdFromUrl(): string | null {
   const match = location.href.match(regex);
   return match ? match[1] : null;
 }
+
+/**
+ * Convert URL term string to TAMU term code (e.g., "Spring 2026 - College Station" -> "202611")
+ * @param urlTerm - The extracted URL term string
+ */
+export function convertUrlTermToTermCode(urlTerm: string): string | null {
+  try {
+    const decoded = decodeURIComponent(urlTerm);
+    const parts = decoded.split('-');
+    if (parts.length === 0) return null;
+
+    const termSeasonYear = parts[0].trim();
+    const split = termSeasonYear.split(' ');
+    if (split.length < 2) return null;
+
+    const season = split[0].toLowerCase();
+    const year = split[1];
+
+    if (season === 'spring') return `${year}11`;
+    if (season === 'summer') return `${year}21`;
+    if (season === 'fall') return `${year}31`;
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 

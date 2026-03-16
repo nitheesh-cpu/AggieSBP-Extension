@@ -50,6 +50,54 @@
   transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
+/* Tabs inside professor sidebar */
+.prof-sidebar-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px;
+  background: var(--prof-bg-card);
+  border-bottom: 1px solid var(--prof-border);
+}
+
+.prof-sidebar-tab {
+  flex: 1;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: var(--prof-text-secondary);
+}
+
+.prof-sidebar-tab.active {
+  background: var(--prof-maroon);
+  color: #fff;
+  border-color: var(--prof-maroon);
+}
+
+.prof-sidebar-tabs-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.professor-compare-panel .prof-sidebar-tab-pane {
+  display: none !important;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  height: 100%;
+}
+
+.professor-compare-panel .prof-sidebar-tab-pane.active {
+  display: flex !important;
+  flex-direction: column;
+}
+
 .professor-compare-panel.collapsed {
   transform: translateX(calc(100% + 40px));
   opacity: 0;
@@ -137,9 +185,11 @@
 }
 
 /* Professors List */
-.prof-list-container {
+.professor-compare-panel .prof-list-container {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: auto !important;
+  min-height: 0;
+  height: auto !important;
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -573,6 +623,187 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+/* Alerts Panel Styles */
+.aggiesbp-alerts-title {
+  color: var(--prof-text-primary);
+  font-size: 16px;
+  font-weight: 600;
+  margin: 16px 16px 8px;
+}
+
+.aggiesbp-alerts-subtitle {
+  color: var(--prof-text-primary);
+  font-size: 14px;
+  font-weight: 600;
+  margin: 20px 16px 12px;
+  border-bottom: 1px solid var(--prof-border);
+  padding-bottom: 8px;
+}
+
+.aggiesbp-alerts-note {
+  color: var(--prof-text-secondary);
+  font-size: 12px;
+  margin: 0 16px 16px;
+  line-height: 1.4;
+  background: var(--prof-bg-inner);
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--prof-border);
+}
+
+.aggiesbp-alerts-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 16px;
+}
+
+.aggiesbp-alerts-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.aggiesbp-alerts-field label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--prof-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.aggiesbp-alerts-field input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--prof-bg-inner);
+  border: 1px solid var(--prof-border);
+  color: var(--prof-text-primary);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.aggiesbp-alerts-field input:focus {
+  outline: none;
+  border-color: var(--prof-maroon);
+  box-shadow: 0 0 0 2px rgba(80, 0, 0, 0.1);
+}
+
+.professor-compare-panel.dark-theme .aggiesbp-alerts-field input:focus {
+  box-shadow: 0 0 0 2px rgba(255, 207, 63, 0.2);
+}
+
+.aggiesbp-alerts-submit {
+  margin-top: 8px;
+  background: var(--prof-maroon);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.aggiesbp-alerts-submit:hover {
+  background: var(--prof-maroon-hover);
+  transform: translateY(-1px);
+}
+
+.aggiesbp-alerts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px 16px;
+}
+
+.aggiesbp-alerts-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--prof-bg-card);
+  border: 1px solid var(--prof-border);
+  padding: 12px;
+  border-radius: 8px;
+  gap: 12px;
+  transition: all 0.2s;
+}
+
+.aggiesbp-alerts-row:hover {
+  border-color: var(--prof-maroon);
+}
+
+.aggiesbp-alerts-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--prof-text-primary);
+  line-height: 1.4;
+}
+
+.aggiesbp-alerts-remove-btn {
+  background: transparent;
+  color: var(--prof-text-muted);
+  border: 1px solid var(--prof-border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.aggiesbp-alerts-remove-btn:hover {
+  color: var(--prof-grade-f);
+  border-color: var(--prof-grade-f);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.aggiesbp-alerts-empty {
+  font-size: 13px;
+  color: var(--prof-text-muted);
+  text-align: center;
+  padding: 20px;
+  background: var(--prof-bg-inner);
+  border-radius: 8px;
+  font-style: italic;
+}
+
+.aggiesbp-alerts-add-btn {
+  background: var(--prof-bg-inner);
+  color: var(--prof-text-primary);
+  border: 1px solid var(--prof-border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.aggiesbp-alerts-add-btn:hover {
+  border-color: var(--prof-maroon);
+  color: var(--prof-maroon);
+  background: rgba(80, 0, 0, 0.05);
+}
+
+.professor-compare-panel.dark-theme .aggiesbp-alerts-add-btn:hover {
+  border-color: #ffcf3f;
+  color: #ffcf3f;
+  background: rgba(255, 207, 63, 0.1);
+}
+
+.aggiesbp-alerts-add-btn.success {
+  background: #10b981;
+  color: white;
+  border-color: #10b981;
 }
 
 /* Responsive */
