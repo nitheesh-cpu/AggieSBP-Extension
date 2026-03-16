@@ -1,104 +1,58 @@
-# Aggie Registration Beautifier - Refactored Structure
+# AggieSB+ Chrome Extension
 
-## Changelog
+**Enhance your Texas A&M registration experience with real-time insights and seat alerts.**
+
+AggieSB+ (formerly Professor Compare) integrates professor ratings, AI summaries, and historical grade distributions directly into the TAMU College Scheduler. It also provides real-time monitoring for full course sections, sending you instant push notifications when seats open up.
+
+## 🚀 Changelog
+
+### v3.1.0 (Current)
+- Added **Seat Alerts**: Real-time push notifications when a course section opens up.
+- Expanded Support: Now appears on **Build Schedule** and **Shopping Cart** pages.
+- Redesigned **Extension Popup**: 3-tab layout (Home, Help, Settings) with help guides and dark mode.
+- Optimized performance for background monitoring.
 
 ### v3.0.1
-- Added ability to check overall summary or other course summary when there's not enough data on the specific course
+- Added ability to check overall summaries when specific course data is limited.
 
 ### v3.0
-- Scrapped the beautification functionality and made it purely functional
-- Added professor compare on the sections page that shows the available professors for that semester
+- Rebranded as purely functional (removed "beautification" focus).
+- Added Professor Comparison on sections pages.
 
 ---
 
-This Chrome extension has been refactored from a monolithic single-file structure to a modern, modular architecture using Vite.
+## 🛠️ Project Structure
 
-## Project Structure
+The project is built with **Vite** and **TypeScript** for speed and reliability.
 
 ```
-src/
-├── config/
-│   └── constants.js          # Configuration constants (API URLs, cache TTL, etc.)
-├── utils/
-│   ├── debug.js              # Debug logging utilities
-│   ├── page-detector.js      # Page type detection
-│   ├── formatters.js         # Data formatting functions
-│   └── dom.js                # DOM manipulation utilities
-├── services/
-│   ├── cache.js              # Cache management (localStorage + chrome.storage)
-│   ├── api.js                # API request functions
-│   ├── course-service.js     # Course data processing
-│   └── professor-service.js  # Professor data fetching
-├── state/
-│   └── store.js              # Global state management
-├── components/
-│   ├── loading-screen.js     # Loading screen component
-│   ├── multi-select.js       # Multi-select dropdown component
-│   ├── course-card.js        # Course card component (to be created)
-│   ├── filter-controls.js    # Filter controls component (to be created)
-│   ├── professors-panel.js   # Professors panel component (to be created)
-│   └── schedule-item.js      # Schedule item component (to be created)
-├── pages/
-│   ├── sections-page.js      # Sections page handler (to be created)
-│   └── schedule-page.js      # Schedule page handler (to be created)
-├── handlers/
-│   ├── card-handlers.js      # Course card event handlers (to be created)
-│   ├── filter-handlers.js    # Filter event handlers (to be created)
-│   ├── checkbox-sync.js      # Checkbox synchronization (to be created)
-│   └── schedule-handlers.js  # Schedule event handlers (to be created)
-├── content/
-│   └── main.js               # Main entry point (to be created)
-├── background/
-│   └── background.js         # Background script (to be created)
-└── popup/
-    ├── popup.html            # Popup HTML (to be created)
-    └── popup.js              # Popup script (to be created)
+extension/
+├── src/
+│   ├── components/      # UI: Support for Professor Panels and Alerts
+│   ├── services/        # Logic: API, Tracking, and Cache management
+│   ├── utils/           # Helpers: Page detection and text formatting
+│   ├── content/         # Content scripts for page injection
+│   └── background.ts    # Service worker for push notifications
+├── popup.js            # Main logic for the extension popup
+├── styles.css          # Shared styles (Modern, Dark Mode support)
+└── index.html          # Extension popup structure
 ```
 
-## Key Improvements
-
-1. **Separation of Concerns**: Code is organized by functionality (utils, services, components, handlers)
-2. **Modularity**: Each module has a single responsibility
-3. **Maintainability**: Easier to find, understand, and modify code
-4. **Testability**: Modules can be tested independently
-5. **Scalability**: Easy to add new features without cluttering existing code
-
-## Development
+## 📦 Development
 
 ### Setup
 ```bash
 npm install
 ```
 
-### Development Mode
-```bash
-npm run dev
-```
+### Build & Run
+- **Development**: `npm run dev`
+- **Build**: `npm run build`
+- **Load**: Go to `chrome://extensions`, enable Developer Mode, and **Load unpacked** from the `dist` or `build` folder.
 
-### Build for Production
-```bash
-npm run build
-```
+---
 
-## Migration Notes
+**Built by Aggies, for Aggies. Gig 'em! 👍**
 
-The original `OLD_CODE.js` file has been broken down into:
-
-- **Utilities**: Debug, formatting, DOM helpers
-- **Services**: API calls, caching, data processing
-- **Components**: Reusable UI components
-- **Handlers**: Event handling logic
-- **Pages**: Page-specific orchestration
-
-## Next Steps
-
-To complete the refactoring, you need to:
-
-1. Create remaining component files (course-card, filter-controls, etc.)
-2. Create page handlers (sections-page, schedule-page)
-3. Create event handlers
-4. Create main entry point that orchestrates everything
-5. Move CSS files to appropriate locations
-6. Create background script and popup if needed
-
-Each file should import from the utilities and services as needed, following the established patterns.
+*Works exclusively with tamu.collegescheduler.com*
+*Data provided by AggieSBP (aggieschedulebuilderplus.vercel.app)*
