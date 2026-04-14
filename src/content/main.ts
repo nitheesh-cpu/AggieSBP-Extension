@@ -1,7 +1,15 @@
-import { initializeProfessorPanel, initializeAlertsOnlyPanel } from '../components/professors-panel';
+import {
+  initializeProfessorPanel,
+  initializeAlertsOnlyPanel,
+  initializeScheduleFitPanel,
+} from '../components/professors-panel';
 import { CacheUtils } from '../services/cache';
 import { store } from '../state/store';
-import { isRegistrationPage, isSchedulerAlertsPage } from '../utils/page-detector';
+import {
+  isRegistrationPage,
+  isSchedulerAlertsPage,
+  isCurrentSchedulePage,
+} from '../utils/page-detector';
 import { debugLog } from '../utils/debug';
 import { exposeDebugUtils } from '../utils/debug';
 
@@ -49,6 +57,18 @@ import { exposeDebugUtils } from '../utils/debug';
       lastInitializedUrl = currentUrl;
       try {
         initializeAlertsOnlyPanel();
+      } finally {
+        isInitializing = false;
+      }
+      return;
+    }
+
+    // /currentschedule: show schedule-fit import panel
+    if (isCurrentSchedulePage()) {
+      isInitializing = true;
+      lastInitializedUrl = currentUrl;
+      try {
+        initializeScheduleFitPanel();
       } finally {
         isInitializing = false;
       }

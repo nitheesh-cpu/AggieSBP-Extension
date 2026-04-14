@@ -1,7 +1,11 @@
 import { getProfessorDetailsUrl, fetchCourseDataForTerm, getTermCodeFromDescription, fetchCourseData, fetchProfessorDetails, type ProfessorDetails, type CourseSummary, type OverallSummary } from '../services/professor-service';
 import { getSelectedCourseData } from '../services/api';
 import { renderAlertsTab } from './alerts-panel';
-import { extractCourseIdFromUrl, extractTermFromUrl, isRegistrationPage } from '../utils/page-detector';
+import {
+  extractCourseIdFromUrl,
+  extractTermFromUrl,
+  isRegistrationPage,
+} from '../utils/page-detector';
 import { debugLog, errorLog } from '../utils/debug';
 import { COURSE_DETAILS_BASE } from '../config/constants';
 
@@ -704,4 +708,161 @@ export function initializeAlertsOnlyPanel(): void {
   setupThemeListener();
 
   debugLog('Alerts-only panel initialized (options/cart page)');
+}
+
+type ScheduleImportBlock = {
+  days: Array<'M' | 'T' | 'W' | 'R' | 'F'>;
+  start: string;
+  end: string;
+};
+
+function normalizeDayToken(token: string): Array<'M' | 'T' | 'W' | 'R' | 'F'> {
+  const t = token.trim().toUpperCase();
+  const out: Array<'M' | 'T' | 'W' | 'R' | 'F'> = [];
+  let i = 0;
+  while (i < t.length) {
+    const c = t[i];
+    if (c === 'T' && i + 1 < t.length && t[i + 1] === 'H') {
+      out.push('R');
+      i += 2;
+      continue;
+    }
+    if (c === 'M' || c === 'T' || c === 'W' || c === 'R' || c === 'F') {
+      out.push(c);
+    }
+    i += 1;
+  }
+  return Array.from(new Set(out));
+}
+
+function parseTimeRange(text: string): { start: string; end: string } | null {
+  const m = text.match(/(\d{1,2}):?(\d{2})\s*(AM|PM)\s*[-–]\s*(\d{1,2}):?(\d{2})\s*(AM|PM)/i);
+  if (!m) return null;
+  const to24 = (hh: string, mm: string, ap: string): string => {
+    let h = Number(hh);
+    const isPm = ap.toUpperCase() === 'PM';
+    if (isPm && h !== 12) h += 12;
+    if (!isPm && h === 12) h = 0;
+    return `${h.toString().padStart(2, '0')}:${mm}`;
+  };
+  return {
+    start: to24(m[1], m[2], m[3]),
+    end: to24(m[4], m[5], m[6]),
+  };
+}
+
+function extractScheduleBlocksFromCurrentSchedulePage(): ScheduleImportBlock[] {
+  const text = (document.body?.innerText || '').replace(/\s+/g, ' ');
+  const regex = /(?:Mon|Tue|Wed|Thu|Fri|M|T|W|R|F|Th){1,8}\s+\d{1,2}:?\d{2}\s*(?:AM|PM)\s*[-–]\s*\d{1,2}:?\d{2}\s*(?:AM|PM)/gi;
+  const matches = text.match(regex) || [];
+  const blocks: ScheduleImportBlock[] = [];
+
+  for (const raw of matches) {
+    const dayMatch = raw.match(/^(.*?)(\d{1,2}:?\d{2}\s*(?:AM|PM)\s*[-–]\s*\d{1,2}:?\d{2}\s*(?:AM|PM))/i);
+    if (!dayMatch) continue;
+    const dayPart = dayMatch[1]
+      .replace(/MONDAY|MON/gi, 'M')
+      .replace(/TUESDAY|TUE/gi, 'T')
+      .replace(/WEDNESDAY|WED/gi, 'W')
+      .replace(/THURSDAY|THU/gi, 'TH')
+      .replace(/FRIDAY|FRI/gi, 'F')
+      .replace(/[^A-Z]/gi, '');
+    const days = normalizeDayToken(dayPart);
+    const range = parseTimeRange(dayMatch[2]);
+    if (!range || days.length === 0) continue;
+    blocks.push({ days, start: range.start, end: range.end });
+  }
+
+  const dedup = new Map<string, ScheduleImportBlock>();
+  for (const b of blocks) {
+    const key = `${b.days.join('')}-${b.start}-${b.end}`;
+    dedup.set(key, b);
+  }
+  return Array.from(dedup.values());
+}
+
+export function initializeScheduleFitPanel(): void {
+  // Remove any existing panel/button to avoid duplication
+  document.getElementById('professor-compare-panel')?.remove();
+  document.getElementById('prof-toggle-btn')?.remove();
+
+  loadProfessorPanelStyles();
+
+  const toggleBtn = document.createElement('button');
+  toggleBtn.id = 'prof-toggle-btn';
+  toggleBtn.className = 'prof-toggle-btn';
+  toggleBtn.innerHTML = `${ICONS.users} AggieSB+`;
+
+  const panel = document.createElement('div');
+  panel.id = 'professor-compare-panel';
+  panel.className = 'professor-compare-panel collapsed';
+
+  const header = document.createElement('div');
+  header.className = 'prof-panel-header';
+  header.innerHTML = `
+    <h2 class="prof-panel-title">
+      ${ICONS.users}
+      <span>Fit My Schedule</span>
+    </h2>
+    <button class="prof-panel-close">${ICONS.close}</button>
+  `;
+
+  const content = document.createElement('div');
+  content.className = 'prof-sidebar-tab-pane active';
+  content.innerHTML = `
+    <div style="padding: 14px;">
+      <p style="font-size: 13px; line-height: 1.5; margin-bottom: 10px;">
+        Import your current TAMU schedule into AggieSB+ and discover classes that fit around it.
+      </p>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <button class="prof-btn prof-btn-primary" id="fit-import-btn">
+          ${ICONS.check}
+          Import current schedule
+        </button>
+        <button class="prof-btn" id="fit-open-btn">
+          ${ICONS.plus}
+          Open Fit My Schedule
+        </button>
+      </div>
+      <p id="fit-import-status" style="font-size: 12px; margin-top: 10px; opacity: 0.8;"></p>
+    </div>
+  `;
+
+  panel.appendChild(header);
+  panel.appendChild(content);
+  document.body.appendChild(toggleBtn);
+  document.body.appendChild(panel);
+
+  toggleBtn.addEventListener('click', () => panel.classList.toggle('collapsed'));
+  header.querySelector('.prof-panel-close')?.addEventListener('click', () =>
+    panel.classList.add('collapsed')
+  );
+
+  const importBtn = content.querySelector('#fit-import-btn') as HTMLButtonElement | null;
+  const openBtn = content.querySelector('#fit-open-btn') as HTMLButtonElement | null;
+  const status = content.querySelector('#fit-import-status') as HTMLParagraphElement | null;
+
+  const openFitWithBlocks = (blocks: ScheduleImportBlock[]) => {
+    const payload = encodeURIComponent(JSON.stringify(blocks));
+    const url = `${COURSE_DETAILS_BASE}/discover/fit?importSchedule=${payload}`;
+    window.open(url, '_blank');
+  };
+
+  importBtn?.addEventListener('click', () => {
+    const blocks = extractScheduleBlocksFromCurrentSchedulePage();
+    if (blocks.length === 0) {
+      if (status) status.textContent = 'No schedule blocks detected on this page yet.';
+      return;
+    }
+    if (status) status.textContent = `Imported ${blocks.length} block(s). Opening Fit My Schedule...`;
+    openFitWithBlocks(blocks);
+  });
+
+  openBtn?.addEventListener('click', () => {
+    window.open(`${COURSE_DETAILS_BASE}/discover/fit`, '_blank');
+  });
+
+  loadAndApplyTheme();
+  setupThemeListener();
+  debugLog('Schedule-fit panel initialized (currentschedule page)');
 }

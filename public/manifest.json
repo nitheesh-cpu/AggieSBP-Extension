@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Professor Compare - Aggie Schedule Builder Plus",
-  "version": "3.1.0",
-  "description": "Compare professors directly on Texas A&M registration pages. View ratings, AI summaries, and grade distributions at a glance.",
+  "name": "AggieSB+: Registration Assistant",
+  "version": "3.2.0",
+  "description": "Professor ratings, AI review summaries, grade distributions, real-time seat alerts for Texas A&M registration, and find classes that fit your current schedule.",
   "permissions": [
     "activeTab",
     "storage",
@@ -54,6 +54,12 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "aggie-schedule-builder-plus@tamu.edu",
+      "strict_min_version": "109.0"
+    }
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
