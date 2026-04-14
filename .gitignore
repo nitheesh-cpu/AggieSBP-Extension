@@ -15,6 +15,7 @@ dist-ssr
 .eslintcache
 
 build
+build-firefox
 
 # Editor directories and files
 .vscode/*
@@ -27,4 +28,5 @@ build
 *.sln
 *.sw?
 /build.zip
+/build-firefox.zip
 images/*xcf
