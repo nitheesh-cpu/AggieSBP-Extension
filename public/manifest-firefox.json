@@ -56,10 +56,16 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
+  "data_collection_permissions": {
+    "required": false
+  },
   "browser_specific_settings": {
     "gecko": {
       "id": "aggie-schedule-builder-plus@tamu.edu",
-      "strict_min_version": "109.0"
+      "strict_min_version": "109.0",
+      "data_collection_permissions": {
+        "required": false
+      }
     }
   },
   "content_security_policy": {
