@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AggieSB+: Registration Assistant",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "description": "Professor ratings, seat alerts, and schedule-fit search for Texas A&M registration.",
   "permissions": [
     "activeTab",
