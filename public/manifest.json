@@ -1,18 +1,22 @@
 {
   "manifest_version": 3,
   "name": "AggieSB+: Registration Assistant",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "description": "Professor ratings, seat alerts, and schedule-fit search for Texas A&M registration.",
   "permissions": [
     "activeTab",
     "storage",
-    "cookies"
+    "cookies",
+    "alarms"
   ],
   "host_permissions": [
     "https://tamu.collegescheduler.com/*",
+    "https://howdy.tamu.edu/*",
     "https://api-aggiesbp.servehttp.com/*",
     "https://aggieschedulebuilderplus.vercel.app/*",
-    "https://aggieschedulebuilderplus-dev.vercel.app/*"
+    "https://aggieschedulebuilderplus-dev.vercel.app/*",
+    "http://localhost:8000/*",
+    "http://localhost:3000/*"
   ],
   "web_accessible_resources": [
     {

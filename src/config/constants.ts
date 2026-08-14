@@ -1,5 +1,5 @@
 // Configuration constants
-export const DEBUG_MODE = true;
+export const DEBUG_MODE = import.meta.env.DEV === true;
 
 export const API_BASE_URL = 'https://tamu.collegescheduler.com/api';
 export const EXTERNAL_API_BASE = 'https://api-aggiesbp.servehttp.com';

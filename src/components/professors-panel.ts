@@ -78,43 +78,78 @@ function setupThemeListener(): void {
 }
 
 /**
- * Format a course-specific summary into readable text
+ * Build structured HTML for a course-specific summary
  */
-function formatCourseSummary(summary: CourseSummary): string {
-  const parts = [];
-  if (summary.teaching) parts.push(summary.teaching);
-  if (summary.exams) parts.push(summary.exams);
-  if (summary.grading) parts.push(summary.grading);
-  if (summary.workload) parts.push(summary.workload);
-  if (summary.personality) parts.push(summary.personality);
-  if (summary.policies) parts.push(summary.policies);
-  if (summary.other) parts.push(summary.other);
-  return parts.length > 0 ? parts.join(' ') : '';
+function buildCourseSummaryHTML(summary: CourseSummary): string {
+  const fields: Array<[keyof CourseSummary, string]> = [
+    ['teaching',    'Teaching'],
+    ['exams',       'Exams'],
+    ['grading',     'Grading'],
+    ['workload',    'Workload'],
+    ['personality', 'Personality'],
+    ['policies',    'Policies'],
+    ['other',       'Other'],
+  ];
+  const sections = fields
+    .filter(([key]) => summary[key as keyof CourseSummary])
+    .map(([key, label]) =>
+      `<div class="prof-summ-section">
+         <span class="prof-summ-label prof-summ-label-${key}">${label}</span>
+         <p class="prof-summ-text">${summary[key as keyof CourseSummary]}</p>
+       </div>`
+    );
+  return sections.length
+    ? `<div class="prof-summ-sections">${sections.join('')}</div>`
+    : '';
 }
 
 /**
- * Format an overall summary into readable text
+ * Build structured HTML for an overall summary
  */
-function formatOverallSummary(summary: OverallSummary): string {
-  const parts = [];
+function buildOverallSummaryHTML(summary: OverallSummary): string {
+  const parts: string[] = [];
 
   if (summary.sentiment) {
-    parts.push(`Overall sentiment: ${summary.sentiment}.`);
+    parts.push(
+      `<div class="prof-summ-section">
+         <span class="prof-summ-label prof-summ-label-sentiment">Overall</span>
+         <p class="prof-summ-text">${summary.sentiment}</p>
+       </div>`
+    );
   }
 
   if (summary.strengths && summary.strengths.length > 0) {
-    parts.push(`Strengths: ${summary.strengths.join(', ')}.`);
+    const items = summary.strengths.map(s => `<li>${s}</li>`).join('');
+    parts.push(
+      `<div class="prof-summ-section">
+         <span class="prof-summ-label prof-summ-label-strengths">Strengths</span>
+         <ul class="prof-summ-list">${items}</ul>
+       </div>`
+    );
   }
 
   if (summary.complaints && summary.complaints.length > 0) {
-    parts.push(`Common complaints: ${summary.complaints.join(', ')}.`);
+    const items = summary.complaints.map(c => `<li>${c}</li>`).join('');
+    parts.push(
+      `<div class="prof-summ-section">
+         <span class="prof-summ-label prof-summ-label-complaints">Complaints</span>
+         <ul class="prof-summ-list">${items}</ul>
+       </div>`
+    );
   }
 
   if (summary.consistency) {
-    parts.push(summary.consistency);
+    parts.push(
+      `<div class="prof-summ-section">
+         <span class="prof-summ-label prof-summ-label-consistency">Consistency</span>
+         <p class="prof-summ-text">${summary.consistency}</p>
+       </div>`
+    );
   }
 
-  return parts.length > 0 ? parts.join(' ') : '';
+  return parts.length
+    ? `<div class="prof-summ-sections">${parts.join('')}</div>`
+    : '';
 }
 
 /**
@@ -160,7 +195,7 @@ function createProfessorCard(professor: ProfessorDetails, currentCourseCode?: st
   interface SummaryOption {
     value: string;
     label: string;
-    content: string;
+    html: string;
     reviewCount: number;
   }
 
@@ -174,13 +209,13 @@ function createProfessorCard(professor: ProfessorDetails, currentCourseCode?: st
 
   // Check if courseSummary is provided
   if (professor.courseSummary) {
-    const content = formatCourseSummary(professor.courseSummary);
-    if (content) {
+    const html = buildCourseSummaryHTML(professor.courseSummary);
+    if (html) {
       const code = professor.courseSummary.courseCode || currentCourseCode || '';
       summaryOptions.push({
         value: 'course',
         label: `This Course (${code || 'Current'})`,
-        content,
+        html,
         reviewCount: professor.courseSummary.reviewCount || 0,
       });
       if (code) addedCourseCodes.add(code.toUpperCase());
@@ -197,12 +232,12 @@ function createProfessorCard(professor: ProfessorDetails, currentCourseCode?: st
     });
 
     if (currentCourseFromOthers) {
-      const content = formatCourseSummary(currentCourseFromOthers);
-      if (content) {
+      const html = buildCourseSummaryHTML(currentCourseFromOthers);
+      if (html) {
         summaryOptions.push({
           value: 'course',
           label: `This Course (${currentCourseFromOthers.courseCode || currentCourseCode})`,
-          content,
+          html,
           reviewCount: currentCourseFromOthers.reviewCount || 0,
         });
         addedCourseCodes.add(normalizedCurrentCode);
@@ -213,12 +248,12 @@ function createProfessorCard(professor: ProfessorDetails, currentCourseCode?: st
 
   // Add overall summary
   if (professor.overallSummary) {
-    const content = formatOverallSummary(professor.overallSummary);
-    if (content) {
+    const html = buildOverallSummaryHTML(professor.overallSummary);
+    if (html) {
       summaryOptions.push({
         value: 'overall',
         label: 'Overall (All Courses)',
-        content,
+        html,
         reviewCount: professor.overallSummary.reviewCount || reviewCount,
       });
     }
@@ -233,12 +268,12 @@ function createProfessorCard(professor: ProfessorDetails, currentCourseCode?: st
         return;
       }
 
-      const content = formatCourseSummary(cs);
-      if (content) {
+      const html = buildCourseSummaryHTML(cs);
+      if (html) {
         summaryOptions.push({
           value: `other-${index}`,
           label: cs.courseCode || `Other Course ${index + 1}`,
-          content,
+          html,
           reviewCount: cs.reviewCount || 0,
         });
         if (code) addedCourseCodes.add(code);
@@ -246,24 +281,23 @@ function createProfessorCard(professor: ProfessorDetails, currentCourseCode?: st
     });
   }
 
-  // Determine initial summary content
-  let initialSummaryContent = '';
+  // Determine initial summary HTML
+  let initialSummaryHTML = '';
   let initialReviewCount = reviewCount;
   let hasSummary = false;
 
   if (summaryOptions.length > 0) {
-    initialSummaryContent = summaryOptions[0].content;
+    initialSummaryHTML = summaryOptions[0].html;
     initialReviewCount = summaryOptions[0].reviewCount;
     hasSummary = true;
   }
 
   // Set appropriate message if no summary available
   if (!hasSummary) {
-    if (reviewCount > 0) {
-      initialSummaryContent = 'Not enough reviews for an AI summary yet.';
-    } else {
-      initialSummaryContent = 'No reviews available for this professor.';
-    }
+    const msg = reviewCount > 0
+      ? 'Not enough reviews for an AI summary yet.'
+      : 'No reviews available for this professor.';
+    initialSummaryHTML = `<p class="prof-summ-empty">${msg}</p>`;
   }
 
   // Check if selected
@@ -274,7 +308,7 @@ function createProfessorCard(professor: ProfessorDetails, currentCourseCode?: st
   const dropdownHTML = hasDropdown ? `
     <select class="prof-summary-select" data-professor-id="${professor.id}">
       ${summaryOptions.map((opt, i) =>
-    `<option value="${opt.value}" data-content="${encodeURIComponent(opt.content)}" data-review-count="${opt.reviewCount}"${i === 0 ? ' selected' : ''}>${opt.label}</option>`
+    `<option value="${opt.value}" data-html="${encodeURIComponent(opt.html)}" data-review-count="${opt.reviewCount}"${i === 0 ? ' selected' : ''}>${opt.label}</option>`
   ).join('')}
     </select>
   ` : '';
@@ -295,10 +329,7 @@ function createProfessorCard(professor: ProfessorDetails, currentCourseCode?: st
         ${dropdownHTML}
       </div>
       <div class="prof-summary-content">
-        <div class="prof-summary-item">
-          ${ICONS.briefcase}
-          <p class="prof-summary-text">${initialSummaryContent}</p>
-        </div>
+        <div class="prof-summ-container">${initialSummaryHTML}</div>
       </div>
     </div>
 
@@ -326,13 +357,13 @@ function createProfessorCard(professor: ProfessorDetails, currentCourseCode?: st
     const select = card.querySelector('.prof-summary-select') as HTMLSelectElement;
     select?.addEventListener('change', () => {
       const selectedOption = select.options[select.selectedIndex];
-      const content = decodeURIComponent(selectedOption.dataset.content || '');
+      const html = decodeURIComponent(selectedOption.dataset.html || '');
       const revCount = selectedOption.dataset.reviewCount || '0';
 
-      const summaryText = card.querySelector('.prof-summary-text');
+      const summaryContainer = card.querySelector('.prof-summ-container') as HTMLElement;
       const reviewCountSpan = card.querySelector('.prof-review-count');
 
-      if (summaryText) summaryText.textContent = content;
+      if (summaryContainer) summaryContainer.innerHTML = html;
       if (reviewCountSpan) reviewCountSpan.textContent = revCount;
     });
   }
