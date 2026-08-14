@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:zip": "npm run build && tar -a -cf build.zip -C build .",
+    "build:zip": "npm run build && node scripts/zip.mjs build build.zip",
     "firefox": "npm run build && node scripts/build-firefox.mjs",
-    "firefox:zip": "npm run firefox && tar -a -cf build-firefox.zip -C build-firefox .",
+    "firefox:zip": "npm run firefox && node scripts/zip.mjs build-firefox build-firefox.zip",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
