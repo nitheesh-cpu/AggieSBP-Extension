@@ -154,7 +154,7 @@ function checkAuthState() {
     chrome.runtime.sendMessage({
         type: 'API_TRACKING_FETCH',
         payload: {
-            url: 'https://api-aggiesbp.servehttp.com/users/tracking',
+            url: 'https://api-aggiesbp.nitheeeshk.com/users/tracking',
             options: {
                 method: 'GET',
                 credentials: 'include'

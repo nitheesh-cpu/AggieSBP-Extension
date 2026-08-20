@@ -2822,7 +2822,7 @@ async function fetchCourseData(courseId) {
   }
 
   try {
-    const apiUrl = `https://api-aggiesbp.servehttp.com/course/${courseId}`;
+    const apiUrl = `https://api-aggiesbp.nitheeshk.com/course/${courseId}`;
     debugLog(`Fetching course data for: ${courseId}`);
 
     const response = await fetch(apiUrl, {
@@ -2864,7 +2864,7 @@ async function fetchProfessorId(professorName) {
     }
 
     const encodedName = encodeURIComponent(professorName);
-    const apiUrl = `https://api-aggiesbp.servehttp.com/professor/find?name=${encodedName}`;
+    const apiUrl = `https://api-aggiesbp.nitheeshk.com/professor/find?name=${encodedName}`;
 
     debugLog(`Fetching professor ID for: ${professorName}`);
 

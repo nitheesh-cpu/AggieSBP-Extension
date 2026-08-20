@@ -2,7 +2,7 @@ const REFRESH_ALARM = 'agsbp-session-refresh';
 const REFRESH_PERIOD_MINUTES = 25; // refresh before typical 30-min token expiry
 
 const API_ORIGINS = [
-  'https://api-aggiesbp.servehttp.com',
+  'https://api-aggiesbp.nitheeshk.com',
   'http://localhost:8000',
 ];
 
