@@ -10,7 +10,7 @@
   ],
   "host_permissions": [
     "https://tamu.collegescheduler.com/*",
-    "https://api-aggiesbp.servehttp.com/*",
+    "https://api-aggiesbp.nitheeshk.com/*",
     "https://aggieschedulebuilderplus.vercel.app/*",
     "https://aggieschedulebuilderplus-dev.vercel.app/*"
   ],
