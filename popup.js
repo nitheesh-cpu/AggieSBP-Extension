@@ -149,56 +149,40 @@ document.addEventListener('DOMContentLoaded', function () {
 function checkAuthState() {
     const container = document.getElementById('auth-state-container');
     if (!container) return;
-
-    // We use the background script proxy to bypass CORS as usual.
-    chrome.runtime.sendMessage({
-        type: 'API_TRACKING_FETCH',
-        payload: {
-            url: 'https://api-aggiesbp.nitheeeshk.com/users/tracking',
-            options: {
-                method: 'GET',
-                credentials: 'include'
-            }
-        }
-    }, function(response) {
-        // Clear loading state
-        container.innerHTML = '';
+    chrome.runtime.sendMessage({ type: 'AUTH_STATUS' }, function (response) {
+        const state = chrome.runtime.lastError ? 'unavailable' : response?.state;
         container.classList.remove('loading-state');
-
-        if (response && response.ok) {
-            // Logged in
-            container.innerHTML = `
-                <div class="auth-info-card">
-                  <div class="auth-info-icon">👋</div>
-                  <div class="auth-info-text">
-                    <span class="auth-info-title">Connected Successfully</span>
-                    <span class="auth-info-desc">Alerts will sync to your account</span>
-                  </div>
+        const signedIn = state === 'signed_in';
+        const signedOut = state === 'signed_out';
+        const title = signedIn ? 'Signed in to AggieSB+' : signedOut ? 'Not signed in' : 'Account status unavailable';
+        const description = signedIn ? 'Your session refreshes automatically.'
+            : signedOut ? 'Sign in once on AggieSB+ to connect this browser.'
+            : 'We could not reach your account. Try again.';
+        container.innerHTML = `
+            <div class="auth-info-card${signedIn ? '' : ' logged-out'}">
+                <div class="auth-info-icon">${signedIn ? '✓' : signedOut ? '↗' : '…'}</div>
+                <div class="auth-info-text">
+                    <span class="auth-info-title">${title}</span>
+                    <span class="auth-info-desc" id="account-email"></span>
+                    <span class="auth-info-desc">${description}</span>
                 </div>
-                <a href="https://aggieschedulebuilderplus.vercel.app/profile/alerts" target="_blank" class="btn btn-primary" style="grid-column: 1 / -1;">
-                  <svg class="btn-icon" style="color: white; margin-bottom: 2px;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                  Manage My Alerts
-                </a>
-            `;
-        } else {
-            // Not logged in or error
-            container.innerHTML = `
-                <div class="auth-info-card logged-out">
-                  <div class="auth-info-icon">⚠️</div>
-                  <div class="auth-info-text">
-                    <span class="auth-info-title">Not Logged In</span>
-                    <span class="auth-info-desc">Seat alerts require an account</span>
-                  </div>
-                </div>
-                <a href="https://aggieschedulebuilderplus.vercel.app" target="_blank" class="btn btn-primary">
-                  <svg class="btn-icon" style="color: #fca5a5;" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
-                  Log In / Sign Up
-                </a>
-                <a href="https://aggieschedulebuilderplus.vercel.app/profile/alerts" target="_blank" class="btn btn-secondary">
-                  <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-                  Demo Alerts
-                </a>
-            `;
-        }
+            </div>
+            ${signedIn ? '<a href="https://aggieschedulebuilderplus.vercel.app/profile/alerts" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="grid-column: 1 / -1;">Manage my alerts ↗</a>'
+                : signedOut ? '<a href="https://aggieschedulebuilderplus.vercel.app/auth?redirectToPath=%2Fprofile%2Falerts" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="grid-column: 1 / -1;">Sign in to AggieSB+ ↗</a>'
+                : '<button type="button" id="retry-auth" class="btn btn-secondary">Retry</button>'}
+        `;
+        const email = document.getElementById('account-email');
+        if (signedIn && response.email) email.textContent = response.email;
+        else email.remove();
+        document.getElementById('retry-auth')?.addEventListener('click', checkAuthState);
     });
 }
+
+window.addEventListener('focus', checkAuthState);
+let authRecheckTimer;
+chrome.cookies.onChanged.addListener(function (change) {
+    if (!['st-access-token', 'st-refresh-token'].includes(change.cookie.name)) return;
+    if (!['aggieschedulebuilderplus.vercel.app', 'aggieschedulebuilderplus-dev.vercel.app'].includes(change.cookie.domain.replace(/^\./, ''))) return;
+    clearTimeout(authRecheckTimer);
+    authRecheckTimer = setTimeout(checkAuthState, 250);
+});

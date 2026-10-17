@@ -7,6 +7,7 @@ import { CacheUtils } from '../services/cache';
 import { store } from '../state/store';
 import {
   isRegistrationPage,
+  isMainCoursesPage,
   isSchedulerAlertsPage,
   isCurrentSchedulePage,
 } from '../utils/page-detector';
@@ -51,8 +52,8 @@ import { exposeDebugUtils } from '../utils/debug';
       return;
     }
 
-    // /options and /cart: show button with alerts-only panel
-    if (isSchedulerAlertsPage()) {
+    // Main scheduler pages: show the button and seat alerts without course-specific ratings.
+    if (isMainCoursesPage() || isSchedulerAlertsPage()) {
       isInitializing = true;
       lastInitializedUrl = currentUrl;
       try {

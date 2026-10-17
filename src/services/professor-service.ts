@@ -1,5 +1,6 @@
 import { EXTERNAL_API_BASE, COURSE_DETAILS_BASE } from '../config/constants';
 import { debugLog, errorLog } from '../utils/debug';
+import { professorNamesMatch } from '../utils/name-matching';
 
 // Cache for professor IDs to avoid repeated API calls
 const professorIdCache = new Map<string, string | null>();
@@ -15,6 +16,7 @@ const semesterProfessorsCache = new Map<string, any[] | null>();
 
 // Cache for detailed professor data (with summaries)
 const professorDetailsCache = new Map<string, ProfessorDetails[] | null>();
+const rmpProfileCache = new Map<string, Promise<number | null>>();
 
 /**
  * Term data from API
@@ -39,10 +41,37 @@ interface SemesterProfessor {
 }
 
 /**
+ * Statistics computed from a professor's (or one course's) raw reviews.
+ * Each percentage comes with the number of reviews that reported it.
+ */
+export interface ReviewStats {
+  review_count?: number;
+  would_take_again_pct?: number | null;
+  would_take_again_n?: number;
+  grade_distribution?: Record<string, number>;
+  grades_reported_n?: number;
+  attendance_mandatory_pct?: number | null;
+  attendance_n?: number;
+  textbook_used_pct?: number | null;
+  textbook_n?: number;
+  recent_window_years?: number;
+  avg_rating_recent?: number | null;
+  recent_n?: number;
+  avg_rating_older?: number | null;
+  older_n?: number;
+  first_review_date?: string | null;
+  last_review_date?: string | null;
+}
+
+/** Summary field name -> one list of cited RMP review IDs per claim. */
+export type SummaryCitations = Record<string, string[][]>;
+
+/**
  * Course-specific summary
  */
 export interface CourseSummary {
   courseCode: string;
+  rating?: number | null;
   teaching?: string | null;
   exams?: string | null;
   grading?: string | null;
@@ -50,6 +79,10 @@ export interface CourseSummary {
   personality?: string | null;
   policies?: string | null;
   other?: string | null;
+  // Structured-summary fields; absent from older API responses.
+  tips?: string[] | null;
+  reviewStats?: ReviewStats | null;
+  citations?: SummaryCitations | null;
   reviewCount: number;
 }
 
@@ -61,6 +94,9 @@ export interface OverallSummary {
   strengths?: string[];
   complaints?: string[];
   consistency?: string;
+  tldr?: string | null;
+  reviewStats?: ReviewStats | null;
+  citations?: SummaryCitations | null;
   reviewCount: number;
 }
 
@@ -70,7 +106,14 @@ export interface OverallSummary {
 export interface ProfessorDetails {
   id: string;
   name: string;
-  rating?: number;
+  campus?: string | null;
+  universityId?: string | null;
+  rating?: number | null;
+  overallRating?: number | null;
+  overallReviewCount?: number;
+  courseRating?: number | null;
+  courseReviewCount?: number;
+  rmpId?: number | null;
   totalReviews: number;
   grades?: {
     avgGpa?: number;
@@ -197,15 +240,15 @@ export async function fetchSemesterProfessors(termCode: string, courseId: string
  * @param {string} courseId - Course ID (e.g., "CSCE411")
  * @returns {Promise<ProfessorDetails[]>}
  */
-export async function fetchProfessorDetails(termCode: string, courseId: string): Promise<ProfessorDetails[]> {
-  const cacheKey = `details:${termCode}:${courseId}`;
+export async function fetchProfessorDetails(termCode: string, courseId: string, campus?: string): Promise<ProfessorDetails[]> {
+  const cacheKey = `details:${termCode}:${courseId}:${campus || ''}`;
 
   if (professorDetailsCache.has(cacheKey)) {
     return professorDetailsCache.get(cacheKey) || [];
   }
 
   try {
-    const apiUrl = `${EXTERNAL_API_BASE}/sections/${termCode}/course/${courseId}/professors/details`;
+    const apiUrl = `${EXTERNAL_API_BASE}/sections/${termCode}/course/${courseId}/professors/details${campus ? `?campus=${encodeURIComponent(campus)}` : ''}`;
     debugLog(`Fetching detailed professor data for ${courseId} in term ${termCode}`);
 
     const response = await fetch(apiUrl, {
@@ -222,7 +265,17 @@ export async function fetchProfessorDetails(termCode: string, courseId: string):
     }
 
     const data = await response.json();
-    const professors: ProfessorDetails[] = data.professors || [];
+    const rawProfessors: ProfessorDetails[] = data.professors || [];
+    let campusProfessors = rawProfessors.filter(professor =>
+      !campus || professor.campus?.trim().toLowerCase() === campus.trim().toLowerCase(),
+    );
+    if (campus && rawProfessors.some(professor => !professor.campus)) {
+      const legacyProfessors = await resolveLegacyCampusProfessors(
+        termCode, courseId, campus, rawProfessors.filter(professor => !professor.campus),
+      );
+      campusProfessors = [...campusProfessors, ...legacyProfessors];
+    }
+    const professors = await addRmpProfileIds(campusProfessors);
     debugLog(`Found ${professors.length} professors with details for ${courseId} in term ${termCode}`);
     professorDetailsCache.set(cacheKey, professors);
     return professors;
@@ -262,6 +315,9 @@ export async function fetchCourseData(courseId: string): Promise<any | null> {
     }
 
     const data = await response.json();
+    if (Array.isArray(data.professors)) {
+      data.professors = await addRmpProfileIds(data.professors);
+    }
     debugLog(`Found course data for ${courseId}:`, data);
     courseDataCache.set(courseId, data);
     return data;
@@ -293,85 +349,14 @@ export async function fetchCourseDataForTerm(courseId: string, termCode: string)
     return courseData;
   }
 
-  // Helper function to normalize and parse name parts
-  const parseNameParts = (name: string): { firstParts: string[]; last: string; full: string; initials: string[] } => {
-    const normalized = name.toLowerCase().trim();
-    // Remove periods and split on whitespace
-    const parts = normalized.replace(/\./g, '').split(/\s+/).filter(p => p.length > 0);
-    const last = parts.length > 0 ? parts[parts.length - 1] : '';
-    // All parts except the last are considered first/middle names
-    const firstParts = parts.length > 1 ? parts.slice(0, -1) : [];
-    // Extract initials from first/middle name parts
-    const initials = firstParts.map(p => p[0] || '');
-    return {
-      firstParts,
-      last,
-      full: normalized,
-      initials,
-    };
-  };
-
-  // Parse semester professor names
-  const semesterProfessorParsed = semesterProfessors.map(p => parseNameParts(p.name));
-
-  // Match function that handles name variations including middle names
+  // Match registration, RMP, and GPA-style name variants.
   const matchesProfessor = (profName: string): boolean => {
-    const prof = parseNameParts(profName);
-
-    for (const semProf of semesterProfessorParsed) {
-      // Exact match
-      if (prof.full === semProf.full) {
+    for (const semesterProfessor of semesterProfessors) {
+      if (professorNamesMatch(profName, semesterProfessor.name)) {
+        debugLog(`Professor name matched: ${profName} ~ ${semesterProfessor.name}`);
         return true;
-      }
-
-      // Last name must match
-      if (prof.last !== semProf.last) {
-        continue;
-      }
-
-      // If either has no first name parts, match on last name alone
-      if (prof.firstParts.length === 0 || semProf.firstParts.length === 0) {
-        debugLog(`Name matched by last name only: ${profName} ~ ${semProf.full}`);
-        return true;
-      }
-
-      // Check if any first/middle name parts match exactly
-      const hasMatchingPart = prof.firstParts.some(profPart =>
-        semProf.firstParts.some(semPart => profPart === semPart)
-      );
-      if (hasMatchingPart) {
-        debugLog(`Name matched by common first/middle part: ${profName} ~ ${semProf.full}`);
-        return true;
-      }
-
-      // Check if any first/middle name part contains another (handles nicknames)
-      const hasContainmentMatch = prof.firstParts.some(profPart =>
-        semProf.firstParts.some(semPart =>
-          (profPart.length >= 3 && semPart.includes(profPart)) ||
-          (semPart.length >= 3 && profPart.includes(semPart))
-        )
-      );
-      if (hasContainmentMatch) {
-        debugLog(`Name matched by containment: ${profName} ~ ${semProf.full}`);
-        return true;
-      }
-
-      // Check if first initials match (handles "J. Smith" vs "John Smith")
-      // Only match by initial if one side has a single-letter name part
-      const profHasInitial = prof.firstParts.some(p => p.length === 1);
-      const semProfHasInitial = semProf.firstParts.some(p => p.length === 1);
-
-      if (profHasInitial || semProfHasInitial) {
-        const initialsMatch = prof.initials.some(pi =>
-          semProf.initials.some(si => pi === si)
-        );
-        if (initialsMatch) {
-          debugLog(`Name matched by initial: ${profName} ~ ${semProf.full}`);
-          return true;
-        }
       }
     }
-
     return false;
   };
 
@@ -460,6 +445,76 @@ export async function fetchProfessorId(professorName: string): Promise<string | 
  */
 export function getProfessorDetailsUrl(professorId: string): string {
   return `${COURSE_DETAILS_BASE}/professor/${professorId}`;
+}
+
+async function resolveLegacyCampusProfessors(
+  termCode: string, courseId: string, campus: string, professors: ProfessorDetails[],
+): Promise<ProfessorDetails[]> {
+  const response = await fetch(`${EXTERNAL_API_BASE}/sections/${termCode}/course/${courseId}`,
+    { headers: { Accept: 'application/json' } });
+  if (!response.ok) throw new Error('Could not verify section campuses');
+  const sections: Array<{ campus?: string; instructors?: Array<{ name: string }> }> = await response.json();
+  const normalizeCampus = (value?: string): string => (value || '').trim().toLowerCase();
+  const targetNames = sections.filter(section => normalizeCampus(section.campus) === normalizeCampus(campus))
+    .flatMap(section => section.instructors || []).map(instructor => instructor.name);
+  const otherNames = sections.filter(section => normalizeCampus(section.campus) !== normalizeCampus(campus))
+    .flatMap(section => section.instructors || []).map(instructor => instructor.name);
+  const relevant = professors.filter(professor => targetNames.some(name => professorNamesMatch(name, professor.name)));
+  return Promise.all(relevant.map(async professor => {
+    const unrated: ProfessorDetails = { id: '', name: professor.name, totalReviews: 0, campus };
+    if (!professor.id || otherNames.some(name => professorNamesMatch(name, professor.name))) return unrated;
+    try {
+      const lookupResponse = await fetch(`${EXTERNAL_API_BASE}/professor/find?name=${encodeURIComponent(professor.name)}`,
+        { headers: { Accept: 'application/json' } });
+      if (!lookupResponse.ok) return unrated;
+      const lookup = await lookupResponse.json();
+      const matches: Array<{ id: string; name: string; rmpId?: number }> = (lookup.matches || [])
+        .filter((match: { name: string }) => professorNamesMatch(match.name, professor.name));
+      // An older backend cannot distinguish same-name RMP identities across campuses.
+      const ids = new Set(matches.map(match => match.id));
+      if (ids.size !== 1 || !ids.has(professor.id)) return unrated;
+      return { ...professor, campus, rmpId: matches[0].rmpId };
+    } catch {
+      return unrated;
+    }
+  }));
+}
+
+export function getRateMyProfessorUrl(rmpId?: number | string | null): string | null {
+  const id = typeof rmpId === 'string' && /^\d+$/.test(rmpId) ? Number(rmpId) : rmpId;
+  return typeof id === 'number' && Number.isSafeInteger(id) && id > 0
+    ? `https://www.ratemyprofessors.com/professor/${id}`
+    : null;
+}
+
+async function addRmpProfileIds(professors: ProfessorDetails[]): Promise<ProfessorDetails[]> {
+  return Promise.all(professors.map(async professor => {
+    if (getRateMyProfessorUrl(professor.rmpId) || !professor.id) return professor;
+
+    let lookup = rmpProfileCache.get(professor.id);
+    if (!lookup) {
+      lookup = (async () => {
+        try {
+          const response = await fetch(
+            `${EXTERNAL_API_BASE}/professor/find?name=${encodeURIComponent(professor.name)}`,
+            { headers: { Accept: 'application/json' } },
+          );
+          if (!response.ok) return null;
+          const data = await response.json();
+          // Use the matched internal identity, never an arbitrary first search result.
+          const match = data.matches?.find((candidate: { id: string; rmpId?: number | string }) =>
+            candidate.id === professor.id && getRateMyProfessorUrl(candidate.rmpId),
+          );
+          return match ? Number(match.rmpId) : null;
+        } catch (error) {
+          debugLog('Could not look up RMP profile:', error);
+          return null;
+        }
+      })();
+      rmpProfileCache.set(professor.id, lookup);
+    }
+    return { ...professor, rmpId: await lookup };
+  }));
 }
 
 /**

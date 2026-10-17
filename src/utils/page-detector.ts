@@ -12,12 +12,7 @@ export function isRegistrationPage(): boolean {
  * @returns {boolean}
  */
 export function isMainCoursesPage(): boolean {
-  const regex = /\/terms\/[^\/]+\/courses$/;
-  const regex2 = /\/terms\/[^\/]+\/options$/;
-  const regex3 = /\/terms\/[^\/]+\/schedules$/;
-  const regex4 = /\/terms\/[^\/]+\/breaks$/;
-  return regex.test(location.href) || regex2.test(location.href) || 
-         regex3.test(location.href) || regex4.test(location.href);
+  return /\/terms\/[^/]+\/(courses|options|schedules|breaks)\/?$/.test(location.pathname);
 }
 
 /**
@@ -87,5 +82,4 @@ export function convertUrlTermToTermCode(urlTerm: string): string | null {
     return null;
   }
 }
-
 

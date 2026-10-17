@@ -1,6 +1,14 @@
-import { getProfessorDetailsUrl, fetchCourseDataForTerm, getTermCodeFromDescription, fetchCourseData, fetchProfessorDetails, type ProfessorDetails, type CourseSummary, type OverallSummary } from '../services/professor-service';
+import { getProfessorDetailsUrl, getRateMyProfessorUrl, fetchCourseDataForTerm, getTermCodeFromDescription, fetchCourseData, fetchProfessorDetails, type ProfessorDetails, type CourseSummary, type OverallSummary } from '../services/professor-service';
 import { getSelectedCourseData } from '../services/api';
 import { renderAlertsTab } from './alerts-panel';
+import { createAccountStatus } from './account-status';
+import {
+  buildReviewStatsHTML,
+  buildTipsSectionHTML,
+  buildTldrSectionHTML,
+  cleanTips,
+  escapeSummaryText,
+} from './summary-insights';
 import {
   extractCourseIdFromUrl,
   extractTermFromUrl,
@@ -8,9 +16,6 @@ import {
 } from '../utils/page-detector';
 import { debugLog, errorLog } from '../utils/debug';
 import { COURSE_DETAILS_BASE } from '../config/constants';
-
-// Track selected professors for comparison
-const selectedProfessors = new Map<string, { name: string; rating: number | null }>();
 
 // Track current course ID
 let currentPanelCourseId: string | null = null;
@@ -77,10 +82,18 @@ function setupThemeListener(): void {
   });
 }
 
+function buildSummaryItem(value: string, index: number): string {
+  const match = value.match(/^(Teaching|Exams|Grading|Workload|Personality|Policies|Other):\s*/i);
+  const topic = match ? `<span class="prof-summ-topic">${escapeSummaryText(match[1])}</span>` : '';
+  const text = match ? value.slice(match[0].length) : value;
+  return `<li${index >= 2 ? ' class="prof-summ-extra"' : ''}>${topic}<span class="prof-summ-preview">${escapeSummaryText(text)}</span></li>`;
+}
+
 /**
  * Build structured HTML for a course-specific summary
  */
 function buildCourseSummaryHTML(summary: CourseSummary): string {
+  const tips = cleanTips(summary.tips);
   const fields: Array<[keyof CourseSummary, string]> = [
     ['teaching',    'Teaching'],
     ['exams',       'Exams'],
@@ -91,15 +104,18 @@ function buildCourseSummaryHTML(summary: CourseSummary): string {
     ['other',       'Other'],
   ];
   const sections = fields
-    .filter(([key]) => summary[key as keyof CourseSummary])
-    .map(([key, label]) =>
-      `<div class="prof-summ-section">
+    // `other` repeats the tips for older clients; show it only without them.
+    .filter(([key]) => summary[key as keyof CourseSummary] && !(key === 'other' && tips.length))
+    .map(([key, label], index) =>
+      `<div class="prof-summ-section${index >= 3 ? ' prof-summ-extra' : ''}">
          <span class="prof-summ-label prof-summ-label-${key}">${label}</span>
-         <p class="prof-summ-text">${summary[key as keyof CourseSummary]}</p>
+         <p class="prof-summ-text prof-summ-preview">${escapeSummaryText(String(summary[key]))}</p>
        </div>`
     );
-  return sections.length
-    ? `<div class="prof-summ-sections">${sections.join('')}</div>`
+  const tipsHTML = buildTipsSectionHTML(tips, sections.length >= 3);
+  const statsHTML = buildReviewStatsHTML(summary.reviewStats);
+  return sections.length || tipsHTML
+    ? `<div class="prof-summ-sections">${statsHTML}${sections.join('')}${tipsHTML}</div>`
     : '';
 }
 
@@ -108,18 +124,22 @@ function buildCourseSummaryHTML(summary: CourseSummary): string {
  */
 function buildOverallSummaryHTML(summary: OverallSummary): string {
   const parts: string[] = [];
+  const tldrHTML = buildTldrSectionHTML(summary.tldr);
+  if (tldrHTML) parts.push(tldrHTML);
+  const statsHTML = buildReviewStatsHTML(summary.reviewStats);
+  if (statsHTML) parts.push(statsHTML);
 
   if (summary.sentiment) {
     parts.push(
       `<div class="prof-summ-section">
          <span class="prof-summ-label prof-summ-label-sentiment">Overall</span>
-         <p class="prof-summ-text">${summary.sentiment}</p>
+         <p class="prof-summ-text">${escapeSummaryText(summary.sentiment)}</p>
        </div>`
     );
   }
 
   if (summary.strengths && summary.strengths.length > 0) {
-    const items = summary.strengths.map(s => `<li>${s}</li>`).join('');
+    const items = summary.strengths.map(buildSummaryItem).join('');
     parts.push(
       `<div class="prof-summ-section">
          <span class="prof-summ-label prof-summ-label-strengths">Strengths</span>
@@ -129,10 +149,10 @@ function buildOverallSummaryHTML(summary: OverallSummary): string {
   }
 
   if (summary.complaints && summary.complaints.length > 0) {
-    const items = summary.complaints.map(c => `<li>${c}</li>`).join('');
+    const items = summary.complaints.map(buildSummaryItem).join('');
     parts.push(
       `<div class="prof-summ-section">
-         <span class="prof-summ-label prof-summ-label-complaints">Complaints</span>
+         <span class="prof-summ-label prof-summ-label-complaints">Common concerns</span>
          <ul class="prof-summ-list">${items}</ul>
        </div>`
     );
@@ -140,9 +160,9 @@ function buildOverallSummaryHTML(summary: OverallSummary): string {
 
   if (summary.consistency) {
     parts.push(
-      `<div class="prof-summ-section">
+      `<div class="prof-summ-section prof-summ-extra">
          <span class="prof-summ-label prof-summ-label-consistency">Consistency</span>
-         <p class="prof-summ-text">${summary.consistency}</p>
+         <p class="prof-summ-text">${escapeSummaryText(summary.consistency)}</p>
        </div>`
     );
   }
@@ -190,6 +210,15 @@ function createProfessorCard(professor: ProfessorDetails, currentCourseCode?: st
 
   // Get review count - use totalReviews from API
   const reviewCount = professor.totalReviews || 0;
+  const courseRating = professor.courseRating ?? professor.courseSummary?.rating;
+  const overallRating = professor.overallRating ?? professor.rating;
+  const courseReviewCount = professor.courseReviewCount ?? professor.courseSummary?.reviewCount ?? 0;
+  const overallReviewCount = professor.overallReviewCount ?? reviewCount;
+  const rmpUrl = getRateMyProfessorUrl(professor.rmpId);
+  const formatRating = (rating?: number | null): string =>
+    typeof rating === 'number' && Number.isFinite(rating) ? `${rating.toFixed(1)} / 5` : 'Unavailable';
+  const hasRating = (rating?: number | null): boolean =>
+    typeof rating === 'number' && Number.isFinite(rating);
 
   // Build summary options for dropdown
   interface SummaryOption {
@@ -300,8 +329,23 @@ function createProfessorCard(professor: ProfessorDetails, currentCourseCode?: st
     initialSummaryHTML = `<p class="prof-summ-empty">${msg}</p>`;
   }
 
-  // Check if selected
-  const isSelected = selectedProfessors.has(professor.id);
+  const isEmpty = !hasRating(courseRating) && !hasRating(overallRating)
+    && !hasSummary && courseReviewCount === 0 && overallReviewCount === 0 && reviewCount === 0;
+  if (isEmpty && !gradeDistHTML) {
+    card.classList.add('prof-card-empty');
+    const profileLinks = [
+      professor.id ? `<a class="prof-empty-link" href="${getProfessorDetailsUrl(professor.id)}" target="_blank" rel="noopener noreferrer">Profile ↗</a>` : '',
+      rmpUrl ? `<a class="prof-empty-link" href="${rmpUrl}" target="_blank" rel="noopener noreferrer">RMP ↗</a>` : '',
+    ].filter(Boolean).join('');
+    card.innerHTML = `
+      <div class="prof-empty-info">
+        <h3 class="prof-name">${escapeSummaryText(professor.name)}</h3>
+        <p class="prof-empty-status">No ratings yet</p>
+      </div>
+      ${profileLinks ? `<div class="prof-empty-links">${profileLinks}</div>` : ''}
+    `;
+    return card;
+  }
 
   // Build dropdown HTML if multiple options available
   const hasDropdown = summaryOptions.length > 1;
@@ -315,23 +359,33 @@ function createProfessorCard(professor: ProfessorDetails, currentCourseCode?: st
 
   card.innerHTML = `
     <div class="prof-card-header">
-      <h3 class="prof-name">${professor.name}</h3>
-      <div class="prof-rating-badge">
-        ${ICONS.star}
-        <span>${professor.rating ? professor.rating.toFixed(1) : 'N/A'}</span>
-      </div>
+      <h3 class="prof-name">${escapeSummaryText(professor.name)}</h3>
     </div>
+    ${isEmpty ? '<p class="prof-empty-status">No ratings yet</p>' : `
+    <div class="prof-ratings" aria-label="Professor ratings">
+      <div class="prof-rating-scope">
+        <span class="prof-rating-label">${escapeSummaryText(currentCourseCode || 'This course')}</span>
+        <div class="prof-rating-badge${hasRating(courseRating) ? '' : ' prof-rating-unavailable'}">${hasRating(courseRating) ? ICONS.star : ''}<span>${formatRating(courseRating)}</span></div>
+        <span class="prof-rating-count">${courseReviewCount} review${courseReviewCount === 1 ? '' : 's'}</span>
+      </div>
+      <div class="prof-rating-scope">
+        <span class="prof-rating-label">Overall · All courses</span>
+        <div class="prof-rating-badge${hasRating(overallRating) ? '' : ' prof-rating-unavailable'}">${hasRating(overallRating) ? ICONS.star : ''}<span>${formatRating(overallRating)}</span></div>
+        <span class="prof-rating-count">${overallReviewCount} review${overallReviewCount === 1 ? '' : 's'}</span>
+      </div>
+    </div>`}
     
-    <div class="prof-summary">
+    ${hasSummary ? `<div class="prof-summary">
       <div class="prof-summary-header">
         ${ICONS.graduation}
         <span class="prof-summary-label">AI Summary based on <span class="prof-review-count">${initialReviewCount}</span> reviews</span>
         ${dropdownHTML}
       </div>
       <div class="prof-summary-content">
-        <div class="prof-summ-container">${initialSummaryHTML}</div>
+        <div class="prof-summ-container prof-summ-compact">${initialSummaryHTML}</div>
+        ${summaryOptions.length ? '<button type="button" class="prof-summ-toggle" aria-expanded="false">Expand full summary</button>' : ''}
       </div>
-    </div>
+    </div>` : !isEmpty ? `<p class="prof-empty-status">${reviewCount > 0 || overallReviewCount > 0 || courseReviewCount > 0 ? 'Summary not available yet.' : 'No reviews available yet.'}</p>` : ''}
 
     ${gradeDistHTML ? `
     <div class="prof-grades">
@@ -341,16 +395,24 @@ function createProfessorCard(professor: ProfessorDetails, currentCourseCode?: st
     ` : ''}
 
     <div class="prof-card-actions">
-      <a href="${getProfessorDetailsUrl(professor.id)}" target="_blank" class="prof-btn prof-btn-primary">
+      <a href="${getProfessorDetailsUrl(professor.id)}" target="_blank" rel="noopener noreferrer" class="prof-btn prof-btn-primary">
         ${ICONS.graduation}
-        Professor
+        ${isEmpty ? 'View professor ↗' : 'Professor'}
       </a>
-      <button class="prof-btn prof-btn-compare ${isSelected ? 'selected' : ''}" data-professor-id="${professor.id}" data-professor-name="${professor.name}" data-professor-rating="${professor.rating || ''}">
-        ${isSelected ? ICONS.check : ICONS.plus}
-        ${isSelected ? 'Added' : 'Compare'}
-      </button>
+      ${rmpUrl ? `<a href="${rmpUrl}" target="_blank" rel="noopener noreferrer" class="prof-btn prof-btn-primary">Rate My Professors ↗</a>` : ''}
     </div>
   `;
+
+  const summaryToggle = card.querySelector<HTMLButtonElement>('.prof-summ-toggle');
+  summaryToggle?.addEventListener('click', () => {
+    const container = card.querySelector('.prof-summ-container');
+    if (!container) return;
+    const expanded = summaryToggle.getAttribute('aria-expanded') !== 'true';
+    container.classList.toggle('prof-summ-compact', !expanded);
+    summaryToggle.setAttribute('aria-expanded', String(expanded));
+    summaryToggle.textContent = expanded ? 'Show compact summary' : 'Expand full summary';
+    if (!expanded) card.querySelector('.prof-summary-header')?.scrollIntoView({ block: 'nearest' });
+  });
 
   // Add dropdown change event listener
   if (hasDropdown) {
@@ -363,106 +425,25 @@ function createProfessorCard(professor: ProfessorDetails, currentCourseCode?: st
       const summaryContainer = card.querySelector('.prof-summ-container') as HTMLElement;
       const reviewCountSpan = card.querySelector('.prof-review-count');
 
-      if (summaryContainer) summaryContainer.innerHTML = html;
+      if (summaryContainer) {
+        summaryContainer.innerHTML = html;
+        summaryContainer.classList.add('prof-summ-compact');
+      }
+      if (summaryToggle) {
+        summaryToggle.setAttribute('aria-expanded', 'false');
+        summaryToggle.textContent = 'Expand full summary';
+      }
       if (reviewCountSpan) reviewCountSpan.textContent = revCount;
     });
   }
-
-  // Add compare button event listener
-  const compareBtn = card.querySelector('.prof-btn-compare') as HTMLButtonElement;
-  compareBtn?.addEventListener('click', () => {
-    toggleProfessorSelection(professor.id, professor.name, professor.rating || null);
-    updateCompareButtonState(card, professor.id);
-    updateCompareBar();
-  });
 
   return card;
 }
 
 /**
- * Toggle professor selection for comparison
- */
-function toggleProfessorSelection(id: string, name: string, rating: number | null): void {
-  if (selectedProfessors.has(id)) {
-    selectedProfessors.delete(id);
-  } else {
-    selectedProfessors.set(id, { name, rating });
-  }
-}
-
-/**
- * Update compare button state
- */
-function updateCompareButtonState(card: HTMLElement, professorId: string): void {
-  const btn = card.querySelector('.prof-btn-compare') as HTMLButtonElement;
-  if (!btn) return;
-
-  const isSelected = selectedProfessors.has(professorId);
-  btn.classList.toggle('selected', isSelected);
-  btn.innerHTML = `${isSelected ? ICONS.check : ICONS.plus} ${isSelected ? 'Added' : 'Compare'}`;
-}
-
-/**
- * Create and update the comparison bar
- */
-function updateCompareBar(): void {
-  let bar = document.getElementById('prof-compare-bar');
-
-  if (selectedProfessors.size === 0) {
-    bar?.classList.remove('visible');
-    return;
-  }
-
-  if (!bar) {
-    bar = document.createElement('div');
-    bar.id = 'prof-compare-bar';
-    bar.className = 'prof-compare-bar';
-    document.body.appendChild(bar);
-  }
-
-  const avatarsHTML = Array.from(selectedProfessors.entries())
-    .slice(0, 5)
-    .map(([_id, { name, rating }]) => {
-      const initials = name.split(' ').map(n => n[0]).join('').slice(0, 2);
-      return `<div class="prof-compare-avatar" title="${name}${rating ? ` (${rating.toFixed(1)})` : ''}">${initials}</div>`;
-    })
-    .join('');
-
-  bar.innerHTML = `
-    <div class="prof-compare-info">
-      ${ICONS.users}
-      <span>Comparing ${selectedProfessors.size} Professor${selectedProfessors.size > 1 ? 's' : ''}</span>
-    </div>
-    <div class="prof-compare-avatars">${avatarsHTML}</div>
-    <div class="prof-compare-actions">
-      <button class="prof-btn-clear">Clear All</button>
-      <button class="prof-btn-compare-now">Compare Now</button>
-    </div>
-  `;
-
-  // Add event listeners
-  bar.querySelector('.prof-btn-clear')?.addEventListener('click', () => {
-    selectedProfessors.clear();
-    document.querySelectorAll('.prof-btn-compare.selected').forEach(btn => {
-      btn.classList.remove('selected');
-      btn.innerHTML = `${ICONS.plus} Compare`;
-    });
-    updateCompareBar();
-  });
-
-  bar.querySelector('.prof-btn-compare-now')?.addEventListener('click', () => {
-    const professorIds = Array.from(selectedProfessors.keys());
-    const compareUrl = `${COURSE_DETAILS_BASE}/compare?professors=${professorIds.join(',')}`;
-    window.open(compareUrl, '_blank');
-  });
-
-  bar.classList.add('visible');
-}
-
-/**
  * Create the floating professor panel
  */
-function createProfessorPanel(courseData: { professors?: ProfessorDetails[] }, courseCode?: string): void {
+function createProfessorPanel(courseData: { professors?: ProfessorDetails[]; emptyMessage?: string }, courseCode?: string): void {
   // Remove existing panel
   const existingPanel = document.getElementById('professor-compare-panel');
   const existingToggle = document.getElementById('prof-toggle-btn');
@@ -521,7 +502,7 @@ function createProfessorPanel(courseData: { professors?: ProfessorDetails[] }, c
     listContainer.innerHTML = `
       <div class="prof-no-data">
         ${ICONS.noData}
-        <p>No professor information available for this course.</p>
+        <p>${escapeSummaryText(courseData.emptyMessage || 'No professor information available for this course.')}</p>
       </div>
     `;
   } else {
@@ -535,6 +516,7 @@ function createProfessorPanel(courseData: { professors?: ProfessorDetails[] }, c
   tabsContent.appendChild(alertsContent);
 
   panel.appendChild(header);
+  panel.appendChild(createAccountStatus());
   panel.appendChild(tabsHeader);
   panel.appendChild(tabsContent);
 
@@ -637,6 +619,8 @@ export async function initializeProfessorPanel(): Promise<void> {
 
   // Get the term code from the URL to filter professors by semester
   const termDesc = extractTermFromUrl();
+  const decodedTermDesc = termDesc ? decodeURIComponent(termDesc) : '';
+  const campus = decodedTermDesc.match(/ - (College Station|Galveston)$/i)?.[1];
   let termCode: string | null = null;
 
   if (termDesc) {
@@ -648,7 +632,7 @@ export async function initializeProfessorPanel(): Promise<void> {
   try {
     // First try the new detailed API with all summaries
     if (termCode) {
-      const detailedProfessors = await fetchProfessorDetails(termCode, apiCourseId);
+      const detailedProfessors = await fetchProfessorDetails(termCode, apiCourseId, campus);
 
       if (detailedProfessors && detailedProfessors.length > 0) {
         debugLog('Using detailed professor data with summaries for:', apiCourseId);
@@ -656,6 +640,12 @@ export async function initializeProfessorPanel(): Promise<void> {
         debugLog('Professor panel initialized for:', apiCourseId);
         return;
       }
+    }
+
+    // The legacy course response cannot establish which campus an instructor teaches on.
+    if (campus) {
+      createProfessorPanel({ professors: [], emptyMessage: 'Professor information could not be verified for this campus. Try refreshing.' }, apiCourseId);
+      return;
     }
 
     // Fallback to the old API if detailed API returns nothing
@@ -684,7 +674,7 @@ export async function initializeProfessorPanel(): Promise<void> {
 
 /**
  * Initialize a button + panel that shows ONLY the Seat Alerts tab.
- * Used on /options and /cart pages where professor data isn't relevant.
+ * Used on main scheduler pages where no individual course is selected.
  */
 export function initializeAlertsOnlyPanel(): void {
   // Remove any existing panel/button to avoid duplication
@@ -721,6 +711,7 @@ export function initializeAlertsOnlyPanel(): void {
   alertsContent.className = 'prof-sidebar-tab-pane active';
 
   panel.appendChild(header);
+  panel.appendChild(createAccountStatus());
   panel.appendChild(alertsContent);
 
   document.body.appendChild(toggleBtn);
@@ -732,13 +723,13 @@ export function initializeAlertsOnlyPanel(): void {
     panel.classList.add('collapsed')
   );
 
-  // Render seat alerts — skip the isRegistrationPage() guard since we're on /options or /cart
+  // Render seat alerts on scheduler pages without an individual course selected.
   void renderAlertsTab(alertsContent, true);
 
   loadAndApplyTheme();
   setupThemeListener();
 
-  debugLog('Alerts-only panel initialized (options/cart page)');
+  debugLog('Alerts-only panel initialized (main scheduler page)');
 }
 
 type ScheduleImportBlock = {
@@ -860,6 +851,7 @@ export function initializeScheduleFitPanel(): void {
   `;
 
   panel.appendChild(header);
+  panel.appendChild(createAccountStatus());
   panel.appendChild(content);
   document.body.appendChild(toggleBtn);
   document.body.appendChild(panel);
