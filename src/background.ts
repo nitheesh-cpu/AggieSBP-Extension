@@ -81,8 +81,11 @@ async function proactiveRefresh(): Promise<void> {
   try { await refreshSession(source); } catch { /* retry on the next request */ }
 }
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(details => {
   chrome.alarms.create(REFRESH_ALARM, { periodInMinutes: 25 });
+  if (details.reason === 'install') {
+    void chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html') });
+  }
 });
 chrome.runtime.onStartup.addListener(() => {
   chrome.alarms.create(REFRESH_ALARM, { periodInMinutes: 25 });

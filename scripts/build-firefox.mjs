@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, writeFile, access } from "node:fs/promises";
+import { cp, mkdir, readFile, rm, writeFile, access } from "node:fs/promises";
 import path from "node:path";
 
 const root = process.cwd();
@@ -30,6 +30,8 @@ async function run() {
   await ensureFile(path.join(chromeBuildDir, "manifest.json"));
   await ensureFile(firefoxManifestTemplatePath);
 
+  // Start clean so assets from older builds (hashed filenames) don't end up in the package.
+  await rm(firefoxBuildDir, { recursive: true, force: true });
   await mkdir(firefoxBuildDir, { recursive: true });
   await cp(chromeBuildDir, firefoxBuildDir, { recursive: true, force: true });
 

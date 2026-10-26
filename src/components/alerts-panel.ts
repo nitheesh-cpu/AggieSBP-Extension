@@ -1,6 +1,7 @@
 import { extractTermFromUrl, convertUrlTermToTermCode, isRegistrationPage } from '../utils/page-detector';
 import { trackSection, untrackSection, getTrackedSections, TrackedSection } from '../services/tracking-service';
 import { debugLog } from '../utils/debug';
+import { findSectionColumns, parseSectionRow, type ScannedSection } from '../utils/section-scanner';
 
 function buildSectionId(termCode: string, crn: string, subject: string, courseNumber: string, section: string): string {
   return `${termCode}-${crn}-${subject}-${courseNumber}-${section}`;
@@ -195,67 +196,46 @@ function renderAddAlertsSection(container: HTMLElement, termCode: string | null)
     scanBtn.disabled = true;
 
     setTimeout(() => {
-      const discoveredSections: { label: string; crn: string; sectionId: string }[] = [];
+      const discoveredSections: { label: string; crn: string; sectionId: string; full: boolean }[] = [];
       
       if (!termCode) {
         debugLog('No termCode found, cannot scan sections.');
       } else {
         const mainContent = document.querySelector('main') || document.body;
-        const potentialRows = mainContent.querySelectorAll('tr, div[role=\"row\"], .row, .grid-row');
-        const rows = Array.from(potentialRows).filter(r => !r.closest('#professor-compare-panel'));
-        
-        debugLog(`Scanning ${rows.length} rows for sections...`);
-        
-        rows.forEach(row => {
-          const cells = Array.from(row.querySelectorAll('td, div[role=\"cell\"], div[role=\"gridcell\"], .cell'));
-          if (cells.length < 3) return; 
-          
-          let crn = '';
-          let subject = '';
-          let courseNumber = '';
-          let section = '';
-          
-          if (cells.length >= 8) {
-             const crnCell = cells[2] as HTMLElement;
-             const subjCell = cells[3] as HTMLElement;
-             const courseCell = cells[4] as HTMLElement;
-             const secCell = cells[5] as HTMLElement;
+        // Skip our own panel and anything hidden (e.g. collapsed tabs).
+        const outsidePanel = (el: Element) =>
+          !el.closest('#professor-compare-panel') && (el as HTMLElement).getClientRects().length > 0;
+        const cellText = (cell: Element) => cell.textContent || '';
+        const addSection = (found: ScannedSection | null) => {
+          if (!found || discoveredSections.some(s => s.crn === found.crn)) return;
+          discoveredSections.push({
+            crn: found.crn,
+            sectionId: buildSectionId(termCode, found.crn, found.subject, found.course, found.section),
+            label: `${found.subject} ${found.course}-${found.section} (CRN ${found.crn})${found.seatsOpen === 0 ? ' · Full' : ''}`,
+            full: found.seatsOpen === 0,
+          });
+        };
 
-             crn = (crnCell.innerText || crnCell.textContent || '').trim();
-             subject = (subjCell.innerText || subjCell.textContent || '').trim();
-             courseNumber = (courseCell.innerText || courseCell.textContent || '').trim();
-             section = (secCell.innerText || secCell.textContent || '').trim();
-          }
-
-          if (!crn || !subject || !courseNumber) {
-              cells.forEach(cell => {
-                 const text = (cell as HTMLElement).innerText || cell.textContent || '';
-                 const trimmedText = text.trim();
-                 if (/^\d{5}$/.test(trimmedText) && !crn) crn = trimmedText;
-                 if (/^[a-zA-Z]{3,4}$/.test(trimmedText) && !subject) subject = trimmedText.toUpperCase();
-                 if (/^\d{3}$/.test(trimmedText) && subject && !courseNumber) courseNumber = trimmedText;
-              });
-          }
-          
-          const rawCrn = crn.replace(/\\D/g, ''); 
-          if (rawCrn.length >= 5) {
-             try {
-                 const finalCrn = rawCrn.substring(0, 5);
-                 const finalSubj = (subject || 'UNKNOWN').toUpperCase();
-                 const finalCourse = courseNumber || 'XXX';
-                 const sec = section || 'XXX'; 
-                 
-                 const sectionId = buildSectionId(termCode, finalCrn, finalSubj, finalCourse, sec);
-                 const label = `${finalSubj} ${finalCourse}-${sec} (CRN ${finalCrn})`;
-                 
-                 if (!discoveredSections.some(s => s.crn === finalCrn)) {
-                     discoveredSections.push({ label, crn: finalCrn, sectionId });
-                 }
-             } catch (e) {
-                 debugLog(`ERROR building section ID for ${crn}:`, e);
-             }
-          }
+        // Tables: read columns from the header, since each page orders them differently
+        // (Build Schedule's Current Schedule table has an extra Status column, for example).
+        const tables = Array.from(mainContent.querySelectorAll('table')).filter(outsidePanel);
+        tables.forEach(table => {
+          const headerRow = table.tHead?.rows[0] ?? Array.from(table.rows).find(r => r.querySelector('th'));
+          const columns = headerRow ? findSectionColumns(Array.from(headerRow.cells).map(cellText)) : null;
+          Array.from(table.rows)
+            .filter(row => row !== headerRow)
+            .forEach(row => addSection(parseSectionRow(Array.from(row.cells).map(cellText), columns)));
         });
+
+        // Grid layouts without a table: recognize the values themselves.
+        Array.from(mainContent.querySelectorAll('div[role="row"], .grid-row')).filter(outsidePanel).forEach(row => {
+          const cells = Array.from(row.querySelectorAll('div[role="cell"], div[role="gridcell"], .cell'));
+          if (cells.length >= 3) addSection(parseSectionRow(cells.map(cellText), null));
+        });
+
+        // Full sections first: those are the ones worth watching.
+        discoveredSections.sort((a, b) => Number(b.full) - Number(a.full));
+        debugLog(`Scanned ${tables.length} tables for sections`);
 
         debugLog(`SCAN COMPLETE: discoveredSections array has ${discoveredSections.length} items`);
       }
@@ -293,7 +273,7 @@ function renderAddAlertsSection(container: HTMLElement, termCode: string | null)
 
       if (discoveredSections.length === 0) {
         freshListContainer.style.display = 'block';
-        freshListContainer.innerHTML = '<p class=\"aggiesbp-alerts-empty\">No full sections found. (Ensure the rows are visible on screen, then try scanning again).</p>';
+        freshListContainer.innerHTML = '<p class=\"aggiesbp-alerts-empty\">No sections found on this page. Open a course&#39;s sections, your cart, or Build Schedule, then scan again.</p>';
       } else {
         debugLog(`Rendering ${discoveredSections.length} discovered sections to LIVE panel`);
         

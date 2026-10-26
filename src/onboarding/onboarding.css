@@ -1,0 +1,415 @@
+/* Onboarding tour: mock College Scheduler page + coach marks. Panel styles come from css/professor-panel.css. */
+
+/* College Scheduler is always light, so the practice page is too. */
+:root {
+  --cs-maroon: #500000;
+  --cs-border: #dddddd;
+  --cs-text: #333333;
+  --cs-link: #337ab7;
+  --tour-bg: #f3f4f6;
+  --tour-surface: #ffffff;
+  --tour-border: #d9dde3;
+  --tour-text: #1f2328;
+  --tour-muted: #5b636e;
+  --tour-maroon: #500000;
+  --tour-maroon-hover: #700000;
+  --tour-accent: #FFCF3F;
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #ffffff;
+  color: var(--cs-text);
+  font-family: 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+}
+
+/* ── Practice banner (dark, so it never blends into the maroon nav) ── */
+.tour-banner {
+  position: sticky;
+  top: 0;
+  z-index: 10003;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 16px;
+  background: #1f2328;
+  color: #fff;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+}
+.tour-banner-pill {
+  background: var(--tour-accent);
+  color: #3a2a00;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.tour-banner-text { flex: 1; min-width: 0; }
+.tour-progress {
+  width: 120px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.2);
+  overflow: hidden;
+}
+.tour-progress-fill {
+  width: 0;
+  height: 100%;
+  background: var(--tour-accent);
+  transition: width 0.3s ease;
+}
+.tour-banner-skip {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  color: #fff;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font: inherit;
+  cursor: pointer;
+}
+.tour-banner-skip:hover { background: rgba(255, 255, 255, 0.12); }
+
+/* ── College Scheduler top nav ── */
+.cs-nav { background: var(--cs-maroon); }
+.cs-nav-inner {
+  display: flex;
+  align-items: stretch;
+  max-width: 970px;
+  height: 49px;
+  margin: 0 auto;
+  padding: 0 8px;
+}
+.cs-nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 14px;
+  background: none;
+  border: none;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.cs-nav-item svg { width: 13px; height: 13px; }
+.cs-nav-item:hover { background: rgba(255, 255, 255, 0.08); }
+.cs-nav-item.active { background: #fff; color: var(--cs-text); }
+.cs-nav-static { cursor: default; }
+.cs-nav-static:hover { background: none; }
+.cs-nav-spacer { flex: 1; }
+
+/* ── Page content ── */
+.cs-page { max-width: 970px; margin: 0 auto; padding: 18px 8px 80px; }
+.cs-h1 { font-size: 30px; font-weight: 400; margin: 18px 0 20px; }
+.cs-h2 { font-size: 24px; font-weight: 500; margin: 0 0 10px; }
+.cs-alert {
+  padding: 10px 10px;
+  background: #fcf8e3;
+  border: 1px solid #faebcc;
+  border-radius: 4px;
+  color: #555;
+  margin-bottom: 20px;
+}
+.cs-tabs-row { display: flex; align-items: flex-end; justify-content: space-between; }
+.cs-tab {
+  padding: 10px 14px;
+  border: 1px solid var(--cs-border);
+  border-top: 4px solid var(--cs-maroon);
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  background: #fff;
+}
+.cs-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  background: #fff;
+  color: var(--cs-text);
+  white-space: nowrap;
+}
+.cs-btn svg { width: 13px; height: 13px; color: var(--cs-maroon); }
+.cs-tabs-row .cs-btn { margin-bottom: 10px; }
+.cs-btn-maroon { background: var(--cs-maroon); border-color: var(--cs-maroon); color: #fff; }
+.cs-btn-disabled { background: #e0e0e0; border-color: #e0e0e0; color: #666; }
+.cs-actions-right { display: flex; justify-content: flex-end; gap: 10px; margin: -4px 0 10px; }
+.cs-actions-left { margin-top: 16px; }
+
+.cs-register { display: flex; gap: 10px; }
+.cs-register input {
+  width: 180px;
+  padding: 7px 12px;
+  border: 1px solid #ccc;
+  border-radius: 2px;
+  font: inherit;
+  background: #fff;
+}
+.cs-hint { font-size: 12px; color: #777; margin: 6px 0 20px; }
+
+.cs-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--cs-border);
+  font-size: 14px;
+}
+.cs-table th {
+  background: var(--cs-maroon);
+  color: #fff;
+  font-weight: 500;
+  line-height: 1.15;
+  padding: 8px 6px;
+  text-align: center;
+}
+.cs-table td { padding: 6px; text-align: center; vertical-align: middle; }
+.cs-row td { padding-top: 8px; }
+.cs-row-detail td { text-align: left; padding: 4px 6px 4px; border-bottom: 1px solid #ccc; }
+.cs-row-detail td:first-child { width: 32px; }
+.cs-row-alt { background: #f9f9f9; }
+.cs-meetings { line-height: 1.45; }
+.cs-link { color: var(--cs-link); text-decoration: none; }
+.cs-link:hover { text-decoration: underline; }
+.cs-info { width: 19px; height: 19px; color: var(--cs-link); vertical-align: middle; }
+.cs-instructor { margin: 2px 0 0 8px; }
+.cs-swatch { display: inline-block; width: 18px; height: 18px; border-radius: 4px; vertical-align: middle; }
+.cs-course-row { cursor: pointer; }
+.cs-course-row:hover { background: #f5f5f5; }
+
+.cs-badge {
+  display: inline-block;
+  margin-right: 3px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  color: #fff;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.cs-badge-prerequisites { background: #3a7d2c; }
+.cs-badge-honors { background: #c37c1c; }
+.cs-badge-restrictions, .cs-badge-red { background: #a3201a; }
+
+/* ── Build Schedule page ── */
+.cs-settings {
+  display: grid;
+  grid-template-columns: 155px 1fr auto 155px 1fr auto;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 10px 14px 16px;
+  margin-top: 8px;
+  border-bottom: 1px solid var(--cs-border);
+}
+.cs-settings-label { font-weight: 500; }
+.cs-btn-sm { padding: 6px 12px; font-size: 12px; justify-self: end; }
+.cs-alert-narrow { max-width: 790px; margin: 22px auto 30px; }
+
+.cs-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: start; }
+.cs-section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.cs-section-head .cs-h2 { margin: 0; font-weight: 400; font-size: 26px; }
+.cs-select-all { display: flex; align-items: center; gap: 6px; padding: 8px 4px; border-bottom: 1px solid var(--cs-border); }
+
+.cs-course {
+  display: grid;
+  grid-template-columns: 22px 1fr auto 22px 22px 22px;
+  align-items: center;
+  column-gap: 14px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--cs-border);
+}
+.cs-course-name small { font-size: 12px; color: var(--cs-text); }
+.cs-course-badges { grid-column: 1 / -1; margin-top: 4px; }
+.cs-course-sections {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--cs-text);
+  font-weight: 500;
+  text-decoration: none;
+}
+.cs-course-sections:hover { text-decoration: underline; }
+.cs-gear { width: 20px; height: 20px; color: #2b0a0a; }
+.cs-lock { width: 16px; height: 16px; color: #d8d8d8; }
+.cs-remove { width: 22px; height: 22px; color: var(--cs-maroon); }
+
+.cs-section-title { margin: 34px 0 10px; font-weight: 400; font-size: 26px; }
+.cs-seats-zero {
+  display: inline-block;
+  min-width: 28px;
+  padding: 3px 6px;
+  border: 1px solid #d9534f;
+  background: #f2dede;
+  border-radius: 2px;
+}
+
+.cs-schedules-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin: 34px 0 10px;
+  border-bottom: 1px solid var(--cs-border);
+}
+.cs-schedules-title { margin: 0 0 12px; }
+.cs-schedule-tabs { display: flex; gap: 4px; }
+.cs-schedule-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border: 1px solid var(--cs-border);
+  border-bottom: none;
+  border-radius: 2px 2px 0 0;
+}
+.cs-schedule-tab-active { border-top: 4px solid var(--cs-maroon); font-weight: 500; }
+.cs-heart { color: #e0262d; font-size: 18px; line-height: 1; }
+.cs-compare {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 6px;
+  background: #d9edf7;
+  border: 1px solid #bce8f1;
+  border-radius: 2px;
+}
+.cs-btn-compare { background: #6b4040; border-color: #6b4040; color: #fff; }
+
+/* Tour UI keeps its own font, separate from the mock site's. */
+.tour-tip, .tour-modal, .tour-toast, .mock-notification {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Keep the panel clear of the practice banner and the nav bar. */
+.professor-compare-panel { top: 96px; max-height: calc(100vh - 116px); }
+
+/* ── Mock push notification ── */
+.mock-notification {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 10001;
+  display: flex;
+  gap: 12px;
+  width: 340px;
+  padding: 14px;
+  background: #fff;
+  color: #1f2328;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  transform: translateY(20px);
+  opacity: 0;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+.mock-notification.visible { transform: none; opacity: 1; }
+.mock-notification strong { display: block; margin-bottom: 2px; }
+.mock-notification span { font-size: 13px; color: #5b636e; }
+
+/* ── Coach marks ── */
+.tour-spotlight {
+  position: fixed;
+  z-index: 10001;
+  border-radius: 12px;
+  box-shadow: 0 0 0 3px var(--tour-accent), 0 0 0 9999px rgba(10, 12, 16, 0.45);
+  pointer-events: none;
+  transition: left 0.2s ease, top 0.2s ease, width 0.2s ease, height 0.2s ease;
+}
+.tour-tip {
+  position: fixed;
+  z-index: 10002;
+  width: 320px;
+  max-width: calc(100vw - 32px);
+  padding: 16px;
+  background: var(--tour-surface);
+  color: var(--tour-text);
+  border: 1px solid var(--tour-border);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.3);
+}
+.tour-tip-step { font-size: 11px; font-weight: 600; color: var(--tour-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.tour-tip-title { font-size: 16px; margin: 4px 0 6px; }
+.tour-tip-body { margin: 0 0 14px; line-height: 1.5; color: var(--tour-muted); }
+.tour-tip-actions { display: flex; align-items: center; gap: 8px; }
+.tour-tip-hint { flex: 1; text-align: right; font-size: 12px; font-weight: 600; color: var(--tour-maroon); }
+
+.tour-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--tour-maroon);
+  background: var(--tour-maroon);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.tour-btn:hover { background: var(--tour-maroon-hover); }
+.tour-btn-ghost { background: transparent; color: var(--tour-text); border-color: var(--tour-border); }
+.tour-btn-ghost:hover { background: var(--tour-bg); }
+.tour-btn:focus-visible { outline: 2px solid var(--tour-accent); outline-offset: 2px; }
+
+/* ── Welcome / finish modal ── */
+.tour-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10004;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(10, 12, 16, 0.55);
+}
+.tour-modal-backdrop[hidden] { display: none; }
+.tour-modal {
+  width: 480px;
+  max-width: 100%;
+  padding: 28px;
+  background: var(--tour-surface);
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+.tour-modal-logo { border-radius: 14px; }
+.tour-modal h1 { font-size: 22px; margin: 12px 0 8px; }
+.tour-modal p { line-height: 1.55; color: var(--tour-muted); margin: 0 0 10px; }
+.tour-modal-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 20px; }
+.tour-checklist { text-align: left; padding-left: 20px; margin: 8px 0 14px; line-height: 1.55; color: var(--tour-muted); }
+.tour-checklist li { margin-bottom: 8px; }
+.tour-checklist strong { color: var(--tour-text); }
+.tour-muted { font-size: 12px; }
+
+/* ── Toast ── */
+.tour-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  z-index: 10005;
+  max-width: calc(100vw - 32px);
+  padding: 10px 16px;
+  background: #1f2328;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 13px;
+  transform: translate(-50%, 20px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+.tour-toast.visible { transform: translate(-50%, 0); opacity: 1; }
+
+@media (max-width: 900px) {
+  .tour-banner-text, .tour-progress { display: none; }
+  .cs-page { overflow-x: auto; }
+  .cs-columns { grid-template-columns: 1fr; }
+  .cs-settings { grid-template-columns: 120px 1fr auto; }
+}

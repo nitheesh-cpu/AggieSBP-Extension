@@ -1055,6 +1055,10 @@
   background: rgba(239, 68, 68, 0.1);
 }
 
+/* The discovery wrapper already has side padding; don't indent its note and results twice. */
+.aggiesbp-alerts-discovery-wrapper .aggiesbp-alerts-note { margin: 0 0 16px; }
+.aggiesbp-alerts-discovery-wrapper .aggiesbp-alerts-list { padding: 0 0 16px; }
+
 .aggiesbp-alerts-empty {
   font-size: 13px;
   color: var(--prof-text-muted);
@@ -1094,6 +1098,108 @@
   background: #10b981;
   color: white;
   border-color: #10b981;
+}
+
+/* Fit My Schedule demo: your classes appear on a week grid, then a class that fits drops into a gap. */
+.fit-demo {
+  margin: 4px 0 14px;
+  padding: 10px 10px 8px;
+  background: var(--prof-bg-card);
+  border: 1px solid var(--prof-border);
+  border-radius: 10px;
+}
+.fit-demo-days,
+.fit-demo-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  column-gap: 6px;
+}
+.fit-demo-days {
+  margin-bottom: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--prof-text-muted);
+}
+.fit-demo-grid {
+  position: relative;
+  grid-template-rows: repeat(6, 8px);
+  row-gap: 3px;
+  overflow: hidden;
+  background-image: repeating-linear-gradient(to bottom, transparent 0 10px, var(--prof-border) 10px 11px);
+}
+.fit-demo-block {
+  border-radius: 4px;
+  opacity: 0;
+}
+.fit-demo-class {
+  background: rgba(80, 0, 0, 0.75);
+  animation: fit-demo-in 6s ease-out infinite;
+  animation-delay: calc(var(--i) * 0.12s);
+}
+.professor-compare-panel.dark-theme .fit-demo-class { background: rgba(255, 207, 63, 0.55); }
+.fit-demo-new {
+  background: rgba(22, 163, 74, 0.18);
+  border: 1.5px dashed var(--prof-green);
+  animation: fit-demo-new 6s ease-out infinite;
+}
+.fit-demo-scan {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 20%;
+  background: linear-gradient(to right, transparent, rgba(22, 163, 74, 0.18), transparent);
+  opacity: 0;
+  animation: fit-demo-scan 6s linear infinite;
+}
+.fit-demo-caption {
+  position: relative;
+  height: 16px;
+  margin-top: 7px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.fit-demo-caption span {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+.fit-demo-caption-import { color: var(--prof-text-muted); animation: fit-demo-caption-import 6s infinite; }
+.fit-demo-caption-found { color: var(--prof-green); animation: fit-demo-caption-found 6s infinite; }
+
+@keyframes fit-demo-in {
+  0% { opacity: 0; transform: scale(0.6); }
+  6%, 86% { opacity: 1; transform: none; }
+  94%, 100% { opacity: 0; transform: none; }
+}
+@keyframes fit-demo-scan {
+  0%, 22% { opacity: 0; transform: translateX(-100%); }
+  26% { opacity: 1; }
+  44% { opacity: 1; transform: translateX(500%); }
+  46%, 100% { opacity: 0; transform: translateX(500%); }
+}
+@keyframes fit-demo-new {
+  0%, 46% { opacity: 0; transform: translateY(-10px); }
+  52% { opacity: 1; transform: none; box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.5); }
+  60% { box-shadow: 0 0 0 5px rgba(22, 163, 74, 0); }
+  86% { opacity: 1; transform: none; }
+  94%, 100% { opacity: 0; transform: none; }
+}
+@keyframes fit-demo-caption-import {
+  0%, 2% { opacity: 0; }
+  6%, 42% { opacity: 1; }
+  46%, 100% { opacity: 0; }
+}
+@keyframes fit-demo-caption-found {
+  0%, 48% { opacity: 0; }
+  52%, 86% { opacity: 1; }
+  94%, 100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fit-demo-class, .fit-demo-new, .fit-demo-caption-found { animation: none; opacity: 1; }
+  .fit-demo-scan, .fit-demo-caption-import { display: none; }
 }
 
 /* Responsive */

@@ -803,6 +803,28 @@ function extractScheduleBlocksFromCurrentSchedulePage(): ScheduleImportBlock[] {
   return Array.from(dedup.values());
 }
 
+/** Week-grid animation: [column (M-F), first row, last row, isNewClass] per block. */
+const FIT_DEMO_BLOCKS: Array<[number, number, number, boolean]> = [
+  [1, 1, 2, false], [3, 1, 2, false], [5, 1, 2, false],
+  [2, 3, 4, false], [4, 3, 4, false],
+  [1, 5, 6, false], [3, 5, 6, false],
+  [2, 5, 6, true], [4, 5, 6, true],
+];
+
+const FIT_DEMO_HTML = `
+  <div class="fit-demo" aria-hidden="true">
+    <div class="fit-demo-days"><span>M</span><span>T</span><span>W</span><span>R</span><span>F</span></div>
+    <div class="fit-demo-grid">
+      ${FIT_DEMO_BLOCKS.map(([col, start, end, isNew], i) =>
+        `<span class="fit-demo-block ${isNew ? 'fit-demo-new' : 'fit-demo-class'}" style="grid-column: ${col}; grid-row: ${start} / ${end + 1}; --i: ${i}"></span>`).join('')}
+      <span class="fit-demo-scan"></span>
+    </div>
+    <div class="fit-demo-caption">
+      <span class="fit-demo-caption-import">Importing your classes…</span>
+      <span class="fit-demo-caption-found">✓ Found a class that fits your gaps</span>
+    </div>
+  </div>`;
+
 export function initializeScheduleFitPanel(): void {
   // Remove any existing panel/button to avoid duplication
   document.getElementById('professor-compare-panel')?.remove();
@@ -836,6 +858,7 @@ export function initializeScheduleFitPanel(): void {
       <p style="font-size: 13px; line-height: 1.5; margin-bottom: 10px;">
         Import your current TAMU schedule into AggieSB+ and discover classes that fit around it.
       </p>
+      ${FIT_DEMO_HTML}
       <div style="display: flex; flex-direction: column; gap: 8px;">
         <button class="prof-btn prof-btn-primary" id="fit-import-btn">
           ${ICONS.check}

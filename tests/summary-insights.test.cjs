@@ -25,15 +25,17 @@ const STATS = {
 
 test('stats with no reporting reviews are hidden', () => {
   const labels = reviewStatChips(STATS).map(chip => chip.label);
-  assert.deepEqual([...labels], [
-    'would take again', 'reported grades', 'used the textbook',
-    'avg rating, last 2 years', 'avg rating, earlier',
-  ]);
+  assert.deepEqual([...labels], ['would take again', 'used the textbook']);
   const html = buildReviewStatsHTML(STATS);
   assert.match(html, /83%<\/span> <span class="prof-stat-label">would take again/);
-  assert.match(html, /A 67% · B 28% · C\+ 6%/);
-  assert.match(html, /4\.4<\/span>.*\(10 reviews\)/);
   assert.doesNotMatch(html, /attendance/);
+});
+
+test('grades and average ratings are not repeated as chips', () => {
+  const html = buildReviewStatsHTML(STATS);
+  assert.doesNotMatch(html, /reported grades|avg rating/);
+  const onlyDuplicates = { ...STATS, would_take_again_n: 0, textbook_n: 0 };
+  assert.equal(buildReviewStatsHTML(onlyDuplicates), '');
 });
 
 test('missing structured fields render nothing', () => {

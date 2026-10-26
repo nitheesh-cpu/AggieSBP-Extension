@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Welcome to AggieSB+</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/professor-panel.css">
+</head>
+<body>
+  <!-- Tutorial chrome: always makes clear this is a practice page -->
+  <div class="tour-banner" role="status">
+    <span class="tour-banner-pill">Practice mode</span>
+    <span class="tour-banner-text">This is a mock registration page with sample data. Nothing you click here is real.</span>
+    <div class="tour-progress" aria-hidden="true"><div class="tour-progress-fill" id="tour-progress-fill"></div></div>
+    <button type="button" class="tour-banner-skip" id="tour-skip">Skip tour</button>
+  </div>
+
+  <!-- Mock scheduler: mirrors College Scheduler's layout with sample data -->
+  <header class="cs-nav">
+    <nav class="cs-nav-inner" aria-label="Practice pages">
+      <button type="button" class="cs-nav-item mock-nav-item" data-scene="build">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 4.5V8l2.5 1.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        Build Schedule
+      </button>
+      <button type="button" class="cs-nav-item" data-demo-link="your Shopping Cart, where the AggieSB+ button shows Seat Alerts">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1 2h2l1.6 7.5h8L14 4H4.2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="5.5" cy="12.8" r="1.2" fill="currentColor"/><circle cx="11.5" cy="12.8" r="1.2" fill="currentColor"/></svg>
+        Shopping Cart (1)
+      </button>
+      <button type="button" class="cs-nav-item mock-nav-item" data-scene="current">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="1.8" y="3" width="12.4" height="11" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M1.8 6.5h12.4M5 1.5v3M11 1.5v3" stroke="currentColor" stroke-width="1.6"/></svg>
+        Current Schedule (4)
+      </button>
+      <span class="cs-nav-spacer"></span>
+      <span class="cs-nav-item cs-nav-static">Help</span>
+      <span class="cs-nav-item cs-nav-static">Sign out</span>
+    </nav>
+  </header>
+
+  <div class="cs-page">
+    <!-- Scene: course sections page -->
+    <main class="mock-scene" id="scene-sections" hidden>
+      <h1 class="cs-h1">CSCE - Computer Sci &amp; Engr 221</h1>
+      <h2 class="cs-h2">Data Structures and Algorithms</h2>
+      <div class="cs-alert">Please select the classes you wish to include.</div>
+      <div class="cs-tabs-row">
+        <span class="cs-tab">Enabled (5 of 5)</span>
+        <span class="cs-btn cs-btn-light">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="6.5" cy="6.5" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10 10l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          Advanced Filters
+        </span>
+      </div>
+      <table class="cs-table">
+        <thead>
+          <tr><th><input type="checkbox" checked aria-label="Select all"></th><th></th><th>CRN<br>#</th><th>Subject</th><th>Course</th><th>Section</th><th>Credits</th><th>Seats<br>Open</th><th>Instruction Mode</th><th>Day(s) &amp; Location(s)</th></tr>
+        </thead>
+        <tbody id="mock-sections-body"></tbody>
+      </table>
+    </main>
+
+    <!-- Scene: build schedule page -->
+    <main class="mock-scene" id="scene-build" hidden>
+      <div class="cs-settings">
+        <span class="cs-settings-label">Term</span><span>Spring 2027 - College Station</span><span class="cs-btn cs-btn-sm">Change</span>
+        <span class="cs-settings-label">Course Status</span><span>Open &amp; Full</span><span class="cs-btn cs-btn-sm">Change</span>
+        <span class="cs-settings-label">Sessions</span><span>All Sessions Selected</span><span class="cs-btn cs-btn-sm">Change</span>
+        <span class="cs-settings-label">Instruction Modes</span><span>All Instruction Modes Selected</span><span class="cs-btn cs-btn-sm">Change</span>
+      </div>
+      <div class="cs-alert cs-alert-narrow"><strong>Instructions:</strong> Add desired courses and breaks and click <strong>Generate Schedules</strong> button!</div>
+
+      <div class="cs-columns">
+        <section>
+          <div class="cs-section-head"><h2 class="cs-h2">Courses</h2><span class="cs-btn cs-btn-maroon">+ Add Course</span></div>
+          <div class="cs-course-list">
+            <label class="cs-select-all"><input type="checkbox"> Select All</label>
+            <div id="mock-course-list"></div>
+          </div>
+        </section>
+        <section>
+          <div class="cs-section-head"><h2 class="cs-h2">Breaks</h2><span class="cs-btn cs-btn-maroon">+ Add Break</span></div>
+          <div class="cs-alert">Add times during the day you do not wish to take classes.</div>
+        </section>
+      </div>
+
+      <h2 class="cs-h2 cs-section-title">Current Schedule</h2>
+      <table class="cs-table">
+        <thead>
+          <tr><th><input type="checkbox" checked aria-label="Select all"></th><th></th><th>Status</th><th>CRN<br>#</th><th>Subject</th><th>Course</th><th>Section</th><th>Credits</th><th>Instruction Mode</th><th>Day(s) &amp; Location(s)</th></tr>
+        </thead>
+        <tbody id="mock-build-current-body"></tbody>
+      </table>
+
+      <h2 class="cs-h2 cs-section-title">Shopping Cart</h2>
+      <table class="cs-table">
+        <thead>
+          <tr><th><input type="checkbox" checked aria-label="Select all"></th><th></th><th>CRN<br>#</th><th>Subject</th><th>Course</th><th>Section</th><th>Credits</th><th>Seats<br>Open</th><th>Instruction Mode</th><th>Day(s) &amp; Location(s)</th></tr>
+        </thead>
+        <tbody id="mock-cart-body"></tbody>
+      </table>
+
+      <div class="cs-schedules-head">
+        <h2 class="cs-h1 cs-schedules-title">Schedules</h2>
+        <div class="cs-schedule-tabs">
+          <span class="cs-schedule-tab"><span class="cs-heart">♥</span> Favorites <strong>0</strong></span>
+          <span class="cs-schedule-tab">Advanced Options</span>
+          <span class="cs-schedule-tab cs-schedule-tab-active">View Schedules</span>
+        </div>
+      </div>
+      <span class="cs-btn cs-btn-maroon">Generate Schedules</span>
+      <div class="cs-compare">
+        <span class="cs-btn cs-btn-compare">Compare</span>
+        <span>Select at least two schedules to compare side by side</span>
+      </div>
+    </main>
+
+    <!-- Scene: current schedule page -->
+    <main class="mock-scene" id="scene-current" hidden>
+      <h1 class="cs-h1">My Current Schedule for Spring 2027 - College Station</h1>
+      <div class="cs-actions-right">
+        <span class="cs-btn cs-btn-light">Email</span>
+        <span class="cs-btn cs-btn-light">Swap</span>
+        <span class="cs-btn cs-btn-maroon">Edit or Drop Classes</span>
+        <span class="cs-btn cs-btn-light">Print</span>
+      </div>
+      <div class="cs-register">
+        <input type="text" placeholder="Enter CRN" aria-label="Enter CRN" disabled>
+        <span class="cs-btn cs-btn-disabled">Register</span>
+      </div>
+      <p class="cs-hint">Add "," comma for multiple adds (e.g., 1234, 1200)</p>
+      <table class="cs-table">
+        <thead>
+          <tr><th></th><th></th><th>Status</th><th>CRN<br>#</th><th>Subject</th><th>Course</th><th>Section</th><th>Credits</th><th>Instruction Mode</th><th>Day(s) &amp; Location(s)</th></tr>
+        </thead>
+        <tbody id="mock-current-body"></tbody>
+      </table>
+    </main>
+  </div>
+
+  <!-- Mock push notification -->
+  <div class="mock-notification" id="mock-notification" hidden>
+    <img src="/icons/icon48.png" alt="" width="32" height="32">
+    <div>
+      <strong>Seat open: CSCE 221-501</strong>
+      <span>A seat just opened in Dr. Jordan Rivera's section. Register now!</span>
+    </div>
+  </div>
+
+  <!-- Coach mark -->
+  <div class="tour-spotlight" id="tour-spotlight" hidden></div>
+  <div class="tour-tip" id="tour-tip" role="dialog" aria-live="polite" hidden>
+    <div class="tour-tip-step" id="tour-tip-step"></div>
+    <h2 class="tour-tip-title" id="tour-tip-title"></h2>
+    <p class="tour-tip-body" id="tour-tip-body"></p>
+    <div class="tour-tip-actions">
+      <button type="button" class="tour-btn tour-btn-ghost" id="tour-back">Back</button>
+      <span class="tour-tip-hint" id="tour-tip-hint"></span>
+      <button type="button" class="tour-btn" id="tour-next">Next</button>
+    </div>
+  </div>
+
+  <!-- Welcome / finish dialogs -->
+  <div class="tour-modal-backdrop" id="tour-modal" hidden>
+    <div class="tour-modal" role="dialog" aria-modal="true" aria-labelledby="tour-modal-title">
+      <img class="tour-modal-logo" src="/icons/icon128.png" alt="" width="64" height="64">
+      <h1 id="tour-modal-title"></h1>
+      <div id="tour-modal-body"></div>
+      <div class="tour-modal-actions" id="tour-modal-actions"></div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/onboarding/main.ts"></script>
+</body>
+</html>

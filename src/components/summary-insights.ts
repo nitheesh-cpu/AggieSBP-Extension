@@ -21,16 +21,11 @@ interface StatChip {
 const pct = (value: number): string => `${Math.round(value)}%`;
 const reviewsLabel = (n: number): string => `${n} review${n === 1 ? '' : 's'}`;
 
-function topGrades(distribution: Record<string, number>, total: number): string {
-  return Object.entries(distribution)
-    .filter(([, count]) => count > 0)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 3)
-    .map(([grade, count]) => `${grade} ${pct((100 * count) / total)}`)
-    .join(' · ');
-}
-
-/** Stats that at least one review reported; a stat with n = 0 is left out. */
+/**
+ * Stats that at least one review reported; a stat with n = 0 is left out.
+ * Grades and average ratings are skipped: the card already shows the grade
+ * distribution and the course/overall ratings.
+ */
 export function reviewStatChips(stats?: ReviewStats | null): StatChip[] {
   if (!stats) return [];
   const chips: StatChip[] = [];
@@ -41,16 +36,8 @@ export function reviewStatChips(stats?: ReviewStats | null): StatChip[] {
   };
 
   add(stats.would_take_again_n, stats.would_take_again_pct, pct, 'would take again');
-  const gradesN = stats.grades_reported_n ?? 0;
-  if (gradesN > 0 && stats.grade_distribution) {
-    const grades = topGrades(stats.grade_distribution, gradesN);
-    if (grades) chips.push({ value: grades, label: 'reported grades', n: gradesN });
-  }
   add(stats.attendance_n, stats.attendance_mandatory_pct, pct, 'say attendance is mandatory');
   add(stats.textbook_n, stats.textbook_used_pct, pct, 'used the textbook');
-  const fixed = (v: number) => v.toFixed(1);
-  add(stats.recent_n, stats.avg_rating_recent, fixed, `avg rating, last ${stats.recent_window_years ?? 2} years`);
-  add(stats.older_n, stats.avg_rating_older, fixed, 'avg rating, earlier');
   return chips;
 }
 

@@ -656,6 +656,12 @@ body.dark-theme .popup-tab:hover:not(.active) {
     font-size: 13px;
 }
 
+#open-tour {
+    width: 100%;
+    margin-bottom: 8px;
+    cursor: pointer;
+}
+
 .help-cta .btn-icon {
     width: 16px;
     height: 16px;

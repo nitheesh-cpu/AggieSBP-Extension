@@ -52,6 +52,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: './index.html',
+        onboarding: './onboarding.html',
         background: './src/background.ts',
         'content/main': './src/content/main.ts',
       },

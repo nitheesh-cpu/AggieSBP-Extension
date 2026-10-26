@@ -12,6 +12,12 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
     // ──────────────────────────────────────────────────────────────────
+    const tourButton = document.getElementById('open-tour');
+    if (tourButton) {
+        tourButton.addEventListener('click', function () {
+            chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html') });
+        });
+    }
     const beautifierCheckbox = document.getElementById('beautifierEnabled');
     const professorSidebarCheckbox = document.getElementById('professorSidebarEnabled');
     const themeToggle = document.getElementById('theme-toggle');
