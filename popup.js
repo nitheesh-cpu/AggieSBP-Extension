@@ -22,17 +22,23 @@ document.addEventListener('DOMContentLoaded', function () {
     const professorSidebarCheckbox = document.getElementById('professorSidebarEnabled');
     const themeToggle = document.getElementById('theme-toggle');
     const themeLabel = document.getElementById('theme-label');
+    const aiSummariesToggle = document.getElementById('ai-summaries-toggle');
 
     // Load saved settings
     chrome.storage.sync.get(
         {
             beautifierEnabled: false,
             professorSidebarEnabled: true,
+            aiSummariesEnabled: true,
             colorScheme: 'maroon',
             compactMode: true,
             theme: 'light' // Default to light theme
         },
         function (items) {
+            if (aiSummariesToggle) {
+                aiSummariesToggle.checked = items.aiSummariesEnabled !== false;
+            }
+
             // Update UI to reflect current settings
             if (beautifierCheckbox) {
                 beautifierCheckbox.checked = items.beautifierEnabled;
@@ -71,6 +77,28 @@ document.addEventListener('DOMContentLoaded', function () {
                         }, function (response) {
                             if (chrome.runtime.lastError) {
                                 console.log('Content script not ready - theme will apply on page refresh');
+                            }
+                        });
+                    }
+                });
+            });
+        });
+    }
+
+    // AI summaries toggle handler
+    if (aiSummariesToggle) {
+        aiSummariesToggle.addEventListener('change', function () {
+            const enabled = aiSummariesToggle.checked;
+
+            chrome.storage.sync.set({ aiSummariesEnabled: enabled }, function () {
+                chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
+                    if (tabs[0]?.id) {
+                        chrome.tabs.sendMessage(tabs[0].id, {
+                            action: 'aiSummariesChanged',
+                            enabled: enabled
+                        }, function (response) {
+                            if (chrome.runtime.lastError) {
+                                console.log('Content script not ready - setting will apply on page refresh');
                             }
                         });
                     }

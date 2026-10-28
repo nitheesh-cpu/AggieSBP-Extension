@@ -377,6 +377,92 @@
   background: var(--prof-bg-inner);
 }
 
+/* AI summary / Recent reviews switch at the top of the professor list */
+.prof-view-switch {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--prof-border);
+  border-radius: 999px;
+  background: var(--prof-bg-card);
+  flex-shrink: 0;
+}
+
+.prof-view-switch button {
+  flex: 1;
+  border: none;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  color: var(--prof-text-secondary);
+}
+
+.prof-view-switch button[aria-pressed="true"] {
+  background: var(--prof-maroon);
+  color: #fff;
+}
+
+/* Recent reviews replace the AI summary when the switch is on "Recent reviews" */
+.prof-reviews {
+  display: none;
+  padding: 16px;
+  background: var(--prof-bg-inner);
+}
+
+.professor-compare-panel.hide-ai-summaries .prof-reviews {
+  display: block;
+}
+
+.professor-compare-panel.hide-ai-summaries .prof-summary,
+.professor-compare-panel.hide-ai-summaries .prof-summary-missing {
+  display: none;
+}
+
+.prof-review-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 6px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--prof-text-muted) transparent;
+}
+
+.prof-review + .prof-review {
+  padding-top: 12px;
+  border-top: 1px solid var(--prof-border);
+}
+
+.prof-review-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: var(--prof-text-muted);
+}
+
+.prof-review-rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 700;
+  color: var(--prof-text-primary);
+}
+
+.prof-review-rating svg {
+  width: 12px;
+  height: 12px;
+  color: var(--prof-yellow);
+}
+
 .prof-summary-header svg {
   width: 14px;
   height: 14px;
@@ -575,14 +661,6 @@
 
 .prof-summ-preview {
   overflow-wrap: anywhere;
-}
-
-.prof-summ-topic {
-  display: block;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--prof-text-secondary);
-  margin-bottom: 2px;
 }
 
 .prof-summ-toggle {

@@ -126,6 +126,56 @@ export interface ProfessorDetails {
 }
 
 /**
+ * A single student review from /professor/{id}/reviews
+ */
+export interface RecentReview {
+  id: string;
+  course_code?: string | null;
+  review_text: string;
+  overall_rating?: number | null;
+  grade?: string | null;
+  review_date?: string | null;
+}
+
+const recentReviewsCache = new Map<string, RecentReview[]>();
+
+/**
+ * Fetch a professor's newest reviews, optionally limited to one course.
+ * Returns null when the request fails so callers can retry later.
+ */
+export async function fetchRecentReviews(professorId: string, courseCode?: string, limit = 5): Promise<RecentReview[] | null> {
+  const cacheKey = `${professorId}:${courseCode || ''}:${limit}`;
+  const cached = recentReviewsCache.get(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const params = new URLSearchParams({ sort_by: 'date', limit: String(limit) });
+    if (courseCode) params.set('course_filter', courseCode);
+    const apiUrl = `${EXTERNAL_API_BASE}/professor/${encodeURIComponent(professorId)}/reviews?${params}`;
+
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      debugLog(`Failed to fetch reviews for ${professorId}: ${response.status}`);
+      return null;
+    }
+
+    const data = await response.json();
+    const reviews: RecentReview[] = Array.isArray(data) ? data : [];
+    recentReviewsCache.set(cacheKey, reviews);
+    return reviews;
+  } catch (error) {
+    errorLog(`Error fetching reviews for ${professorId}:`, error);
+    return null;
+  }
+}
+
+/**
  * Fetch all available terms from API
  * @returns {Promise<TermData[]>}
  */

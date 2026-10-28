@@ -1,4 +1,4 @@
-import { getProfessorDetailsUrl, getRateMyProfessorUrl, fetchCourseDataForTerm, getTermCodeFromDescription, fetchCourseData, fetchProfessorDetails, type ProfessorDetails, type CourseSummary, type OverallSummary } from '../services/professor-service';
+import { getProfessorDetailsUrl, getRateMyProfessorUrl, fetchCourseDataForTerm, getTermCodeFromDescription, fetchCourseData, fetchProfessorDetails, fetchRecentReviews, type ProfessorDetails, type CourseSummary, type OverallSummary, type RecentReview } from '../services/professor-service';
 import { getSelectedCourseData } from '../services/api';
 import { renderAlertsTab } from './alerts-panel';
 import { createAccountStatus } from './account-status';
@@ -70,12 +70,126 @@ function applyTheme(theme: string): void {
 }
 
 /**
- * Listen for theme change messages from popup
+ * Load AI summary preference and apply to panel
  */
-function setupThemeListener(): void {
+async function loadAndApplyAiSummaries(): Promise<void> {
+  try {
+    const result = await chrome.storage.sync.get({ aiSummariesEnabled: true });
+    applyAiSummaries(result.aiSummariesEnabled !== false);
+  } catch (e) {
+    debugLog('Could not load AI summary preference:', e);
+  }
+}
+
+/**
+ * Show AI summaries, or recent reviews in their place, in the professor panel
+ */
+function applyAiSummaries(enabled: boolean): void {
+  const panel = document.getElementById('professor-compare-panel');
+  if (!panel) return;
+  panel.classList.toggle('hide-ai-summaries', !enabled);
+  panel.querySelectorAll<HTMLButtonElement>('.prof-view-switch button').forEach((btn) => {
+    btn.setAttribute('aria-pressed', String((btn.dataset.mode === 'summary') === enabled));
+  });
+  if (!enabled) {
+    panel.querySelectorAll<HTMLElement>('.prof-reviews').forEach((container) => void loadRecentReviews(container));
+  }
+}
+
+/**
+ * Create the in-panel switch between AI summaries and recent reviews
+ */
+function createAiSummariesSwitch(): HTMLElement {
+  const row = document.createElement('div');
+  row.className = 'prof-view-switch';
+  row.setAttribute('role', 'group');
+  row.setAttribute('aria-label', 'What professor cards show');
+  row.innerHTML = `
+    <button type="button" data-mode="summary" aria-pressed="true">AI summary</button>
+    <button type="button" data-mode="reviews" aria-pressed="false">Recent reviews</button>
+  `;
+  row.querySelectorAll<HTMLButtonElement>('button').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const enabled = btn.dataset.mode === 'summary';
+      applyAiSummaries(enabled);
+      chrome.storage.sync.set({ aiSummariesEnabled: enabled }).catch((e) => {
+        debugLog('Could not save AI summary preference:', e);
+      });
+    });
+  });
+  return row;
+}
+
+// The review list scrolls inside the card, so it can hold more than fits on screen
+const RECENT_REVIEW_LIMIT = 20;
+
+function formatReviewDate(value?: string | null): string {
+  const date = value ? new Date(value) : null;
+  return date && !Number.isNaN(date.getTime())
+    ? date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    : '';
+}
+
+function buildRecentReviewsHTML(reviews: RecentReview[], scope: string): string {
+  if (!reviews.length) return '<p class="prof-summ-empty">No written reviews yet.</p>';
+  const items = reviews.map((review) => {
+    const rating = typeof review.overall_rating === 'number' && Number.isFinite(review.overall_rating)
+      ? `<span class="prof-review-rating">${ICONS.star}${review.overall_rating.toFixed(1)}</span>`
+      : '';
+    const meta = [
+      review.course_code ? escapeSummaryText(review.course_code) : '',
+      formatReviewDate(review.review_date),
+      review.grade ? `Grade: ${escapeSummaryText(review.grade)}` : '',
+    ].filter(Boolean).map((part) => `<span>${part}</span>`).join('');
+    return `<li class="prof-review">
+        <div class="prof-review-meta">${rating}${meta}</div>
+        <p class="prof-summ-text">${escapeSummaryText(review.review_text)}</p>
+      </li>`;
+  }).join('');
+  return `<div class="prof-summary-header">
+      ${ICONS.users}
+      <span class="prof-summary-label">${reviews.length} recent review${reviews.length === 1 ? '' : 's'} · ${escapeSummaryText(scope)}</span>
+    </div>
+    <ul class="prof-review-list">${items}</ul>`;
+}
+
+/**
+ * Fill a card's review section the first time recent reviews are shown.
+ * Falls back to all courses when the professor has no reviews for this one.
+ */
+async function loadRecentReviews(container: HTMLElement): Promise<void> {
+  if (container.dataset.state) return;
+  const { professorId, courseCode } = container.dataset;
+  if (!professorId) return;
+  container.dataset.state = 'loading';
+  container.innerHTML = '<p class="prof-summ-empty">Loading recent reviews…</p>';
+
+  let reviews = courseCode ? await fetchRecentReviews(professorId, courseCode, RECENT_REVIEW_LIMIT) : [];
+  let scope = courseCode || 'All courses';
+  if (reviews && !reviews.length) {
+    reviews = await fetchRecentReviews(professorId, undefined, RECENT_REVIEW_LIMIT);
+    scope = 'All courses';
+  }
+
+  if (!reviews) {
+    delete container.dataset.state;
+    container.innerHTML = '<p class="prof-summ-empty">Could not load reviews. Switch views to try again.</p>';
+    return;
+  }
+  container.dataset.state = 'loaded';
+  container.innerHTML = buildRecentReviewsHTML(reviews, scope);
+}
+
+/**
+ * Listen for settings change messages from popup
+ */
+function setupSettingsListener(): void {
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message.action === 'themeChanged') {
       applyTheme(message.theme);
+      sendResponse({ success: true });
+    } else if (message.action === 'aiSummariesChanged') {
+      applyAiSummaries(message.enabled !== false);
       sendResponse({ success: true });
     }
     return true; // Keep message channel open for async response
@@ -83,10 +197,9 @@ function setupThemeListener(): void {
 }
 
 function buildSummaryItem(value: string, index: number): string {
-  const match = value.match(/^(Teaching|Exams|Grading|Workload|Personality|Policies|Other):\s*/i);
-  const topic = match ? `<span class="prof-summ-topic">${escapeSummaryText(match[1])}</span>` : '';
-  const text = match ? value.slice(match[0].length) : value;
-  return `<li${index >= 2 ? ' class="prof-summ-extra"' : ''}>${topic}<span class="prof-summ-preview">${escapeSummaryText(text)}</span></li>`;
+  // Drop the "Teaching:"-style topic prefix; the sentence makes the topic clear on its own.
+  const text = value.replace(/^(Teaching|Exams|Grading|Workload|Personality|Policies|Other):\s*/i, '');
+  return `<li${index >= 2 ? ' class="prof-summ-extra"' : ''}><span class="prof-summ-preview">${escapeSummaryText(text)}</span></li>`;
 }
 
 /**
@@ -385,7 +498,9 @@ function createProfessorCard(professor: ProfessorDetails, currentCourseCode?: st
         <div class="prof-summ-container prof-summ-compact">${initialSummaryHTML}</div>
         ${summaryOptions.length ? '<button type="button" class="prof-summ-toggle" aria-expanded="false">Expand full summary</button>' : ''}
       </div>
-    </div>` : !isEmpty ? `<p class="prof-empty-status">${reviewCount > 0 || overallReviewCount > 0 || courseReviewCount > 0 ? 'Summary not available yet.' : 'No reviews available yet.'}</p>` : ''}
+    </div>` : !isEmpty ? `<p class="prof-empty-status prof-summary-missing">${reviewCount > 0 || overallReviewCount > 0 || courseReviewCount > 0 ? 'Summary not available yet.' : 'No reviews available yet.'}</p>` : ''}
+
+    ${professor.id && !isEmpty ? `<div class="prof-reviews" data-professor-id="${escapeSummaryText(professor.id)}" data-course-code="${escapeSummaryText(currentCourseCode || '')}"></div>` : ''}
 
     ${gradeDistHTML ? `
     <div class="prof-grades">
@@ -506,6 +621,7 @@ function createProfessorPanel(courseData: { professors?: ProfessorDetails[]; emp
       </div>
     `;
   } else {
+    listContainer.appendChild(createAiSummariesSwitch());
     courseData.professors.forEach((professor: ProfessorDetails) => {
       listContainer.appendChild(createProfessorCard(professor, courseCode));
     });
@@ -540,11 +656,12 @@ function createProfessorPanel(courseData: { professors?: ProfessorDetails[]; emp
   // Render alerts tab content
   void renderAlertsTab(alertsContent);
 
-  // Apply saved theme
+  // Apply saved theme and AI summary preference
   loadAndApplyTheme();
+  loadAndApplyAiSummaries();
 
-  // Setup theme change listener
-  setupThemeListener();
+  // Setup settings change listener
+  setupSettingsListener();
 
   // Event listeners
   toggleBtn.addEventListener('click', () => {
@@ -727,7 +844,7 @@ export function initializeAlertsOnlyPanel(): void {
   void renderAlertsTab(alertsContent, true);
 
   loadAndApplyTheme();
-  setupThemeListener();
+  setupSettingsListener();
 
   debugLog('Alerts-only panel initialized (main scheduler page)');
 }
@@ -909,6 +1026,6 @@ export function initializeScheduleFitPanel(): void {
   });
 
   loadAndApplyTheme();
-  setupThemeListener();
+  setupSettingsListener();
   debugLog('Schedule-fit panel initialized (currentschedule page)');
 }
