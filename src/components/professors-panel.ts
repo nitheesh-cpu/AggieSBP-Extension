@@ -463,9 +463,9 @@ function createProfessorCard(professor: ProfessorDetails, currentCourseCode?: st
   // Build dropdown HTML if multiple options available
   const hasDropdown = summaryOptions.length > 1;
   const dropdownHTML = hasDropdown ? `
-    <select class="prof-summary-select" data-professor-id="${professor.id}">
+    <select class="prof-summary-select" data-professor-id="${escapeSummaryText(String(professor.id))}">
       ${summaryOptions.map((opt, i) =>
-    `<option value="${opt.value}" data-html="${encodeURIComponent(opt.html)}" data-review-count="${opt.reviewCount}"${i === 0 ? ' selected' : ''}>${opt.label}</option>`
+    `<option value="${opt.value}" data-html="${encodeURIComponent(opt.html)}" data-review-count="${opt.reviewCount}"${i === 0 ? ' selected' : ''}>${escapeSummaryText(opt.label)}</option>`
   ).join('')}
     </select>
   ` : '';
