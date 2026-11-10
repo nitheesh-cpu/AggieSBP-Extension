@@ -6,6 +6,7 @@
  * Kept free of shared imports (other than the parser) so the bundle stays a
  * single self-contained content script.
  */
+import { withUtm } from '../config/constants';
 import {
   CURRICULUM_URL,
   encodePayload,
@@ -101,7 +102,7 @@ function step(done: boolean, label: string, action?: { text: string; run: () => 
 }
 
 function sendToSite(data: { courses: HowdyCourse[] }) {
-  const url = `${SITE_URL}/planner#howdy=${encodePayload(data)}`;
+  const url = withUtm(`${SITE_URL}/planner#howdy=${encodePayload(data)}`, 'howdy-import');
   window.open(url, '_blank', 'noopener');
 }
 

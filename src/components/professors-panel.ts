@@ -15,7 +15,7 @@ import {
   isRegistrationPage,
 } from '../utils/page-detector';
 import { debugLog, errorLog } from '../utils/debug';
-import { COURSE_DETAILS_BASE } from '../config/constants';
+import { COURSE_DETAILS_BASE, withUtm } from '../config/constants';
 
 // Track current course ID
 let currentPanelCourseId: string | null = null;
@@ -1007,7 +1007,7 @@ export function initializeScheduleFitPanel(): void {
 
   const openFitWithBlocks = (blocks: ScheduleImportBlock[]) => {
     const payload = encodeURIComponent(JSON.stringify(blocks));
-    const url = `${COURSE_DETAILS_BASE}/discover/fit?importSchedule=${payload}`;
+    const url = withUtm(`${COURSE_DETAILS_BASE}/discover/fit?importSchedule=${payload}`, 'fit-import');
     window.open(url, '_blank');
   };
 
@@ -1022,7 +1022,7 @@ export function initializeScheduleFitPanel(): void {
   });
 
   openBtn?.addEventListener('click', () => {
-    window.open(`${COURSE_DETAILS_BASE}/discover/fit`, '_blank');
+    window.open(withUtm(`${COURSE_DETAILS_BASE}/discover/fit`, 'fit-open'), '_blank');
   });
 
   loadAndApplyTheme();

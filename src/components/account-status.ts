@@ -1,5 +1,7 @@
-const ACCOUNT_URL = 'https://aggieschedulebuilderplus.vercel.app/profile/alerts';
-const LOGIN_URL = 'https://aggieschedulebuilderplus.vercel.app/auth?redirectToPath=%2Fprofile%2Falerts';
+import { withUtm } from '../config/constants';
+
+const ACCOUNT_URL = withUtm('https://aggieschedulebuilderplus.vercel.app/profile/alerts', 'account-status');
+const LOGIN_URL = withUtm('https://aggieschedulebuilderplus.vercel.app/auth?redirectToPath=%2Fprofile%2Falerts', 'account-status');
 
 export function createAccountStatus(): HTMLElement {
   const row = document.createElement('div');

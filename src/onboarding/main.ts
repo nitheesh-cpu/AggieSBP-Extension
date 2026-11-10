@@ -1,4 +1,5 @@
 import './onboarding.css';
+import { withUtm } from '../config/constants';
 
 /**
  * Interactive onboarding tour shown after install.
@@ -10,7 +11,7 @@ import './onboarding.css';
  */
 
 const SITE_URL = 'https://aggieschedulebuilderplus.vercel.app';
-const LOGIN_URL = `${SITE_URL}/auth?redirectToPath=%2Fprofile%2Falerts`;
+const LOGIN_URL = withUtm(`${SITE_URL}/auth?redirectToPath=%2Fprofile%2Falerts`, 'onboarding');
 const SCHEDULER_URL = 'https://tamu.collegescheduler.com/';
 const TOUR_DONE_KEY = 'onboardingCompleted';
 

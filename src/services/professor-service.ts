@@ -1,4 +1,4 @@
-import { EXTERNAL_API_BASE, COURSE_DETAILS_BASE } from '../config/constants';
+import { EXTERNAL_API_BASE, COURSE_DETAILS_BASE, withUtm } from '../config/constants';
 import { debugLog, errorLog } from '../utils/debug';
 import { professorNamesMatch } from '../utils/name-matching';
 
@@ -494,7 +494,7 @@ export async function fetchProfessorId(professorName: string): Promise<string | 
  * @returns {string}
  */
 export function getProfessorDetailsUrl(professorId: string): string {
-  return `${COURSE_DETAILS_BASE}/professor/${professorId}`;
+  return withUtm(`${COURSE_DETAILS_BASE}/professor/${professorId}`, 'professor-link');
 }
 
 async function resolveLegacyCampusProfessors(
@@ -573,6 +573,6 @@ async function addRmpProfileIds(professors: ProfessorDetails[]): Promise<Profess
  * @returns {string}
  */
 export function getCourseDetailsUrl(courseId: string): string {
-  return `${COURSE_DETAILS_BASE}/course/${courseId}`;
+  return withUtm(`${COURSE_DETAILS_BASE}/course/${courseId}`, 'course-link');
 }
 
