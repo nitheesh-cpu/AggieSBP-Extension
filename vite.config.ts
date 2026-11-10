@@ -9,10 +9,12 @@ function removeExportsFromContentScript(): Plugin {
     name: 'remove-exports-from-content-script',
     generateBundle(_options, bundle) {
       // Find and modify the content script bundle
-      const contentScript = bundle['content/main.js'];
-      if (contentScript && contentScript.type === 'chunk') {
-        // Remove export statements at the end
-        contentScript.code = contentScript.code.replace(/export\s*\{[^}]*\};?\s*$/gm, '');
+      for (const name of ['content/main.js', 'content/howdy.js']) {
+        const contentScript = bundle[name];
+        if (contentScript && contentScript.type === 'chunk') {
+          // Remove export statements at the end
+          contentScript.code = contentScript.code.replace(/export\s*\{[^}]*\};?\s*$/gm, '');
+        }
       }
     },
   };
@@ -55,14 +57,15 @@ export default defineConfig({
         onboarding: './onboarding.html',
         background: './src/background.ts',
         'content/main': './src/content/main.ts',
+        'content/howdy': './src/content/howdy.ts',
       },
       output: {
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === 'background') {
             return 'background.js';
           }
-          if (chunkInfo.name === 'content/main') {
-            return 'content/main.js';
+          if (chunkInfo.name === 'content/main' || chunkInfo.name === 'content/howdy') {
+            return `${chunkInfo.name}.js`;
           }
           return 'assets/[name]-[hash].js';
         },
