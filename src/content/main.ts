@@ -5,17 +5,21 @@ import {
 } from '../components/professors-panel';
 import { CacheUtils } from '../services/cache';
 import { store } from '../state/store';
-import {
-  isRegistrationPage,
-  isMainCoursesPage,
-  isSchedulerAlertsPage,
-  isCurrentSchedulePage,
-} from '../utils/page-detector';
+import { isRegistrationPage, isCurrentSchedulePage } from '../utils/page-detector';
 import { debugLog } from '../utils/debug';
 import { exposeDebugUtils } from '../utils/debug';
 
+type PanelMode = 'professors' | 'schedule-fit' | 'alerts';
+
+/** Sections pages get professors; /currentschedule gets schedule fit; everything else gets seat alerts. */
+function panelModeForCurrentPage(): PanelMode {
+  if (isRegistrationPage()) return 'professors';
+  if (isCurrentSchedulePage()) return 'schedule-fit';
+  return 'alerts';
+}
+
 /**
- * Initialize the extension - Professor Comparison only
+ * Initialize the extension
  */
 (async function init() {
   debugLog('AggieSBP Professor Compare initialized');
@@ -25,105 +29,43 @@ import { exposeDebugUtils } from '../utils/debug';
     console.error('Error during cache cleanup:', error);
   });
 
-  // Track initialization state to prevent double initialization
-  let isInitializing = false;
-  let lastInitializedUrl = '';
+  // URL the sidebar currently in the page was built for.
+  let renderedUrl = '';
+  // Bumped on every rebuild so a slow professor lookup can't overwrite a newer page's sidebar.
+  let generation = 0;
 
-  // Function to clean up professor panel when leaving sections page
-  function cleanupProfessorPanel(): void {
-    const existingPanel = document.getElementById('professor-compare-panel');
-    const existingToggle = document.getElementById('prof-toggle-btn');
-    const existingCompareBar = document.getElementById('professor-compare-bar');
-
-    if (existingPanel) existingPanel.remove();
-    if (existingToggle) existingToggle.remove();
-    if (existingCompareBar) existingCompareBar.remove();
-
-    debugLog('Professor panel cleaned up');
-  }
-
-  // Function to initialize professor panel based on current page
-  async function initializeProfessorCompare(): Promise<void> {
+  /**
+   * Make sure the sidebar button in the page matches the current URL.
+   * Safe to call repeatedly: it only rebuilds when the URL changed or the button went missing
+   * (e.g. Schedule Builder re-rendered the page and dropped it).
+   */
+  function syncPanel(): void {
     const currentUrl = location.href;
+    const hasButton = document.getElementById('prof-toggle-btn') !== null;
+    if (currentUrl === renderedUrl && hasButton) return;
 
-    // Prevent double initialization on the same URL
-    if (isInitializing || lastInitializedUrl === currentUrl) {
-      debugLog('Skipping initialization - already initializing or already initialized for this URL');
-      return;
-    }
+    renderedUrl = currentUrl;
+    const thisGeneration = ++generation;
+    const isStale = () => thisGeneration !== generation || location.href !== currentUrl;
 
-    // Main scheduler pages: show the button and seat alerts without course-specific ratings.
-    if (isMainCoursesPage() || isSchedulerAlertsPage()) {
-      isInitializing = true;
-      lastInitializedUrl = currentUrl;
-      try {
-        initializeAlertsOnlyPanel();
-      } finally {
-        isInitializing = false;
-      }
-      return;
-    }
+    const mode = panelModeForCurrentPage();
+    debugLog('Building sidebar:', mode, currentUrl);
 
-    // /currentschedule: show schedule-fit import panel
-    if (isCurrentSchedulePage()) {
-      isInitializing = true;
-      lastInitializedUrl = currentUrl;
-      try {
-        initializeScheduleFitPanel();
-      } finally {
-        isInitializing = false;
-      }
-      return;
-    }
-
-    // Only run on sections pages - cleanup if not
-    if (!isRegistrationPage()) {
-      debugLog('Not on a sections page, cleaning up professor panel');
-      cleanupProfessorPanel();
-      return;
-    }
-
-    isInitializing = true;
-    lastInitializedUrl = currentUrl;
-
-    try {
-      debugLog('Current URL:', currentUrl);
-      debugLog('Is sections page:', isRegistrationPage());
-
-      // Initialize combined sidebar (professors + alerts)
-      await initializeProfessorPanel();
-    } finally {
-      isInitializing = false;
+    if (mode === 'professors') {
+      // Shows the button right away with a loading state, then fills in professors.
+      void initializeProfessorPanel(isStale);
+    } else if (mode === 'schedule-fit') {
+      initializeScheduleFitPanel();
+    } else {
+      initializeAlertsOnlyPanel();
     }
   }
 
-  // Initialize on page load
-  await initializeProfessorCompare();
+  syncPanel();
 
-  // Listen for navigation events (SPA navigation)
-  let lastUrl = location.href;
-  const checkUrlChange = () => {
-    const currentUrl = location.href;
-    if (currentUrl !== lastUrl) {
-      lastUrl = currentUrl;
-      lastInitializedUrl = ''; // Reset to allow initialization on new URL
-      debugLog('URL changed, checking page type:', currentUrl);
-      setTimeout(async () => {
-        await initializeProfessorCompare();
-      }, 500);
-    }
-  };
-
-  // Check for URL changes periodically (for SPA navigation)
-  setInterval(checkUrlChange, 1000);
-
-  // Also listen for popstate events (back/forward navigation)
-  window.addEventListener('popstate', () => {
-    lastInitializedUrl = ''; // Reset to allow re-check
-    setTimeout(async () => {
-      await initializeProfessorCompare();
-    }, 300);
-  });
+  // Schedule Builder is a SPA: pick up client-side navigation and re-add the button if it disappears.
+  setInterval(syncPanel, 1000);
+  window.addEventListener('popstate', () => setTimeout(syncPanel, 100));
 
   // Set up periodic cache cleanup (every 10 minutes)
   setInterval(() => {

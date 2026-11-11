@@ -17,8 +17,11 @@ import {
 import { debugLog, errorLog } from '../utils/debug';
 import { COURSE_DETAILS_BASE, withUtm } from '../config/constants';
 
-// Track current course ID
-let currentPanelCourseId: string | null = null;
+/** True when the sidebar is in the DOM and expanded. Used to keep it open when it's rebuilt. */
+function isPanelOpen(): boolean {
+  const panel = document.getElementById('professor-compare-panel');
+  return !!panel && !panel.classList.contains('collapsed');
+}
 
 // SVG Icons
 const ICONS = {
@@ -183,7 +186,13 @@ async function loadRecentReviews(container: HTMLElement): Promise<void> {
 /**
  * Listen for settings change messages from popup
  */
+let settingsListenerRegistered = false;
+
 function setupSettingsListener(): void {
+  // Panels are rebuilt on every navigation; one listener is enough since it targets the live DOM.
+  if (settingsListenerRegistered) return;
+  settingsListenerRegistered = true;
+
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message.action === 'themeChanged') {
       applyTheme(message.theme);
@@ -192,7 +201,7 @@ function setupSettingsListener(): void {
       applyAiSummaries(message.enabled !== false);
       sendResponse({ success: true });
     }
-    return true; // Keep message channel open for async response
+    return false;
   });
 }
 
@@ -558,7 +567,13 @@ function createProfessorCard(professor: ProfessorDetails, currentCourseCode?: st
 /**
  * Create the floating professor panel
  */
-function createProfessorPanel(courseData: { professors?: ProfessorDetails[]; emptyMessage?: string }, courseCode?: string): void {
+function createProfessorPanel(
+  courseData: { professors?: ProfessorDetails[]; emptyMessage?: string; loading?: boolean },
+  courseCode?: string,
+): void {
+  // Keep the sidebar open if the user opened it while professors were loading.
+  const wasOpen = isPanelOpen();
+
   // Remove existing panel
   const existingPanel = document.getElementById('professor-compare-panel');
   const existingToggle = document.getElementById('prof-toggle-btn');
@@ -577,7 +592,7 @@ function createProfessorPanel(courseData: { professors?: ProfessorDetails[]; emp
   // Create panel
   const panel = document.createElement('div');
   panel.id = 'professor-compare-panel';
-  panel.className = 'professor-compare-panel collapsed';
+  panel.className = wasOpen ? 'professor-compare-panel' : 'professor-compare-panel collapsed';
 
   // Panel header
   const header = document.createElement('div');
@@ -613,7 +628,14 @@ function createProfessorPanel(courseData: { professors?: ProfessorDetails[]; emp
   const listContainer = document.createElement('div');
   listContainer.className = 'prof-list-container';
 
-  if (!courseData.professors || courseData.professors.length === 0) {
+  if (courseData.loading) {
+    listContainer.innerHTML = `
+      <div class="prof-loading">
+        <div class="prof-loading-spinner"></div>
+        <p>Loading professors…</p>
+      </div>
+    `;
+  } else if (!courseData.professors || courseData.professors.length === 0) {
     listContainer.innerHTML = `
       <div class="prof-no-data">
         ${ICONS.noData}
@@ -676,32 +698,39 @@ function createProfessorPanel(courseData: { professors?: ProfessorDetails[]; emp
 }
 
 /**
- * Initialize professor panel
+ * Initialize professor panel.
+ *
+ * The button appears immediately (with a loading state) and is always left in the page,
+ * even if lookups fail, so the user never has to refresh to get it. `isStale` lets the caller
+ * discard results when the user has navigated elsewhere before the fetches finished.
  */
-export async function initializeProfessorPanel(): Promise<void> {
+export async function initializeProfessorPanel(isStale: () => boolean = () => false): Promise<void> {
   // Only run on sections pages
   if (!isRegistrationPage()) {
     debugLog('Not on a sections page, skipping professor panel');
     return;
   }
 
+  const render = (courseData: Parameters<typeof createProfessorPanel>[0], courseCode?: string): void => {
+    if (isStale()) {
+      debugLog('Discarding professor panel for a page the user already left');
+      return;
+    }
+    createProfessorPanel(courseData, courseCode);
+  };
+
+  const unavailable = (courseCode?: string): void =>
+    render({ professors: [], emptyMessage: 'Professor information could not be loaded for this course. Try refreshing.' }, courseCode);
+
+  render({ loading: true });
+
   // Extract course ID from URL
   const courseId = extractCourseIdFromUrl();
   if (!courseId) {
     debugLog('Could not extract course ID from URL');
+    unavailable();
     return;
   }
-
-  // Check if panel already exists for this course
-  if (currentPanelCourseId === courseId) {
-    const existingPanel = document.getElementById('professor-compare-panel');
-    if (existingPanel) {
-      debugLog('Professor panel already exists for this course');
-      return;
-    }
-  }
-
-  currentPanelCourseId = courseId;
 
   // Get course data from API
   let apiCourseId: string | null = null;
@@ -717,20 +746,20 @@ export async function initializeProfessorPanel(): Promise<void> {
     }
   } catch (error) {
     debugLog('Could not fetch course data from API:', error);
+  }
 
+  if (!apiCourseId) {
     // Fallback: Try to extract from page DOM
     const pageTitle = document.querySelector('h1, h2, .course-title');
-    if (pageTitle) {
-      const titleText = pageTitle.textContent || '';
-      const courseMatch = titleText.match(/([A-Z]+)\s*(\d+)/);
-      if (courseMatch) {
-        apiCourseId = `${courseMatch[1]}${courseMatch[2]}`;
-      }
+    const courseMatch = (pageTitle?.textContent || '').match(/([A-Z]+)\s*(\d+)/);
+    if (courseMatch) {
+      apiCourseId = `${courseMatch[1]}${courseMatch[2]}`;
     }
   }
 
   if (!apiCourseId) {
     debugLog('Could not determine course ID for professor panel');
+    unavailable();
     return;
   }
 
@@ -740,20 +769,20 @@ export async function initializeProfessorPanel(): Promise<void> {
   const campus = decodedTermDesc.match(/ - (College Station|Galveston)$/i)?.[1];
   let termCode: string | null = null;
 
-  if (termDesc) {
-    termCode = await getTermCodeFromDescription(termDesc);
-    debugLog('Term code for current page:', termCode);
-  }
-
   // Fetch professor data filtered by semester and create panel
   try {
+    if (termDesc) {
+      termCode = await getTermCodeFromDescription(termDesc);
+      debugLog('Term code for current page:', termCode);
+    }
+
     // First try the new detailed API with all summaries
     if (termCode) {
       const detailedProfessors = await fetchProfessorDetails(termCode, apiCourseId, campus);
 
       if (detailedProfessors && detailedProfessors.length > 0) {
         debugLog('Using detailed professor data with summaries for:', apiCourseId);
-        createProfessorPanel({ professors: detailedProfessors }, apiCourseId);
+        render({ professors: detailedProfessors }, apiCourseId);
         debugLog('Professor panel initialized for:', apiCourseId);
         return;
       }
@@ -761,7 +790,7 @@ export async function initializeProfessorPanel(): Promise<void> {
 
     // The legacy course response cannot establish which campus an instructor teaches on.
     if (campus) {
-      createProfessorPanel({ professors: [], emptyMessage: 'Professor information could not be verified for this campus. Try refreshing.' }, apiCourseId);
+      render({ professors: [], emptyMessage: 'Professor information could not be verified for this campus. Try refreshing.' }, apiCourseId);
       return;
     }
 
@@ -779,13 +808,15 @@ export async function initializeProfessorPanel(): Promise<void> {
     }
 
     if (courseApiData) {
-      createProfessorPanel(courseApiData, apiCourseId);
+      render(courseApiData, apiCourseId);
       debugLog('Professor panel initialized for:', apiCourseId);
     } else {
       debugLog('No course API data found for:', apiCourseId);
+      render({ professors: [] }, apiCourseId);
     }
   } catch (error) {
     errorLog('Error fetching course data:', error);
+    unavailable(apiCourseId);
   }
 }
 

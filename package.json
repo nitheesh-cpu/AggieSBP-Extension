@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && vite build -c vite.content.config.ts --mode main && vite build -c vite.content.config.ts --mode howdy",
     "build:zip": "npm run build && node scripts/zip.mjs build build.zip",
     "firefox": "npm run build && node scripts/build-firefox.mjs",
     "firefox:zip": "npm run firefox && node scripts/zip.mjs build-firefox build-firefox.zip",
