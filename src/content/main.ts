@@ -8,8 +8,16 @@ import { store } from '../state/store';
 import { isRegistrationPage, isCurrentSchedulePage } from '../utils/page-detector';
 import { debugLog } from '../utils/debug';
 import { exposeDebugUtils } from '../utils/debug';
+import { reportUsage } from '../utils/usage';
 
 type PanelMode = 'professors' | 'schedule-fit' | 'alerts';
+
+/** Coarse page label for usage counts. */
+const PAGE_LABEL: Record<PanelMode, string> = {
+  professors: 'sections',
+  'schedule-fit': 'current-schedule',
+  alerts: 'scheduler',
+};
 
 /** Sections pages get professors; /currentschedule gets schedule fit; everything else gets seat alerts. */
 function panelModeForCurrentPage(): PanelMode {
@@ -50,6 +58,7 @@ function panelModeForCurrentPage(): PanelMode {
 
     const mode = panelModeForCurrentPage();
     debugLog('Building sidebar:', mode, currentUrl);
+    reportUsage('ext-page-enhanced', { page: PAGE_LABEL[mode] }, { oncePerLoad: true });
 
     if (mode === 'professors') {
       // Shows the button right away with a loading state, then fills in professors.

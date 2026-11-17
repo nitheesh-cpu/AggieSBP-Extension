@@ -18,6 +18,7 @@ import {
   summarize,
   type HowdyCourse,
 } from '../utils/howdy-planner';
+import { reportUsage } from '../utils/usage';
 
 const SITE_URL = 'https://aggieschedulebuilderplus.vercel.app';
 const HOST_ID = 'aggiesbp-howdy-import';
@@ -175,7 +176,16 @@ function render() {
       'aria-disabled': ready ? 'false' : 'true',
     }, 'Send to AggieSB+');
     send.addEventListener('click', () => {
-      if (ready) sendToSite({ courses });
+      if (!ready) return;
+      // Counts only: no course codes, grades or terms.
+      reportUsage('ext-howdy-import', {
+        courses: summary.total,
+        completed: summary.completed,
+        inProgress: summary.inProgress,
+        planned: summary.planned,
+        terms: summary.terms,
+      });
+      sendToSite({ courses });
     });
     body.append(send);
   }
@@ -227,6 +237,7 @@ function checkUrl() {
   lastUrl = key;
   if (isDegreePlannerUrl(location.href)) {
     mount();
+    reportUsage('ext-page-enhanced', { page: plannerPage(location.href) }, { oncePerLoad: true });
     scheduleRender(); // curriculum -> planner keeps the panel; refresh its steps
   } else unmount();
 }

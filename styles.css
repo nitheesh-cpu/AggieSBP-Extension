@@ -411,6 +411,13 @@ body {
     color: #64748b;
 }
 
+.setting-note {
+    margin: 8px 0 0;
+    font-size: 11px;
+    line-height: 1.4;
+    color: #64748b;
+}
+
 /* Toggle Switch */
 .toggle-switch {
     position: relative;
@@ -494,6 +501,10 @@ body.dark-theme .setting-info,
 body.dark-theme .link-item,
 body.dark-theme .btn-secondary {
     color: #f1f5f9;
+}
+
+body.dark-theme .setting-note {
+    color: #94a3b8;
 }
 
 body.dark-theme .section-title {

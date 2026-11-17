@@ -81,11 +81,212 @@ async function proactiveRefresh(): Promise<void> {
   try { await refreshSession(source); } catch { /* retry on the next request */ }
 }
 
+// ---------------------------------------------------------------------------
+// Anonymous usage counts
+//
+// Sent to the self-hosted Umami instance that also tracks the website, from
+// this background script only: content scripts and the popup send a
+// USAGE_EVENT message (src/utils/usage.ts, popup.js) and every event passes
+// the allowlist and rate limits below.
+//
+// What is sent: an event name, the extension version, a coarse site/page label
+// and small counts. Never names, emails, student ids, grades, course codes,
+// course lists or professor names.
+//
+// Opt-out: `usageStatsEnabled` in chrome.storage.sync (popup Settings, default
+// on). Firefox only sends if the user granted the optional
+// `technicalAndInteraction` data collection permission, which the Firefox
+// manifest does not request yet, so Firefox builds currently send nothing.
+//
+// No extra permissions: /api/send answers CORS with
+// `Access-Control-Allow-Origin: *` and requests go out without credentials.
+// ---------------------------------------------------------------------------
+
+const ENDPOINT = 'https://stats.nitheeshk.com/api/send';
+const WEBSITE_ID = '7efa90af-63b9-4c90-9287-510bd8e41d2e';
+// Distinct from the website's hostname so extension traffic is easy to filter in Umami.
+const HOSTNAME = 'extension.aggiesbp';
+const DEV_HOSTNAME = 'extension-dev.aggiesbp';
+const USAGE_STATS_KEY = 'usageStatsEnabled';
+
+type Value = string | number;
+type Data = Record<string, Value>;
+/** Per event: allowed data keys, each either an enum of strings or a small count. */
+type Schema = Record<string, readonly string[] | 'count'>;
+
+const PAGES = ['sections', 'current-schedule', 'scheduler', 'curriculum', 'planner', 'evaluate', 'other'] as const;
+
+/** Events content scripts and the popup may ask for. Anything else is dropped. */
+const MESSAGE_EVENTS: Record<string, Schema> = {
+  'ext-page-enhanced': { page: PAGES },
+  'ext-panel-open': { page: PAGES },
+  'ext-professor-action': { action: ['details', 'rmp', 'expand-summary'] },
+  'ext-seat-alert-add': { source: ['scan', 'manual'] },
+  'ext-howdy-import': { courses: 'count', completed: 'count', inProgress: 'count', planned: 'count', terms: 'count' },
+  'ext-fit-import': { blocks: 'count' },
+  'ext-popup-open': {},
+};
+
+const MAX_COUNT = 1000;
+const SOURCE_LIMIT = 10;              // events per tab (or extension page) ...
+const SOURCE_WINDOW_MS = 10 * 60_000; // ... per 10 minutes
+const GLOBAL_LIMIT = 60;              // events per hour from the whole extension
+const DUPLICATE_MS = 5_000;           // identical event from the same source (double clicks)
+
+const recent = new Map<string, number[]>();
+const lastSeen = new Map<string, number>();
+const globalSent: number[] = [];
+let umamiCache: string | undefined;
+let serverDisabled = false;
+
+const isFirefox = (): boolean => chrome.runtime.getURL('').startsWith('moz-extension:');
+
+function sanitize(schema: Schema, data: unknown): Data | null {
+  if (data !== undefined && (typeof data !== 'object' || data === null || Array.isArray(data))) return null;
+  const input = (data ?? {}) as Record<string, unknown>;
+  const out: Data = {};
+  for (const [key, value] of Object.entries(input)) {
+    const rule = schema[key];
+    if (!rule) return null;
+    if (rule === 'count') {
+      if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) return null;
+      out[key] = Math.min(value, MAX_COUNT);
+    } else {
+      if (typeof value !== 'string' || !rule.includes(value)) return null;
+      out[key] = value;
+    }
+  }
+  return out;
+}
+
+function siteOf(url: string | undefined): string | null {
+  if (!url) return null;
+  try {
+    const { protocol, hostname, pathname } = new URL(url);
+    if (hostname === 'tamu.collegescheduler.com') return 'collegescheduler';
+    if (hostname === 'howdy.tamu.edu') return 'howdy';
+    if (protocol === 'chrome-extension:' || protocol === 'moz-extension:') {
+      return pathname.includes('onboarding') ? 'onboarding' : 'popup';
+    }
+  } catch { /* fall through */ }
+  return null;
+}
+
+function allowRate(source: string, key: string): boolean {
+  const now = Date.now();
+  const last = lastSeen.get(key);
+  if (last !== undefined && now - last < DUPLICATE_MS) return false;
+
+  while (globalSent.length && now - globalSent[0] > 60 * 60_000) globalSent.shift();
+  if (globalSent.length >= GLOBAL_LIMIT) return false;
+
+  const times = (recent.get(source) ?? []).filter(t => now - t < SOURCE_WINDOW_MS);
+  if (times.length >= SOURCE_LIMIT) {
+    recent.set(source, times);
+    return false;
+  }
+  times.push(now);
+  recent.set(source, times);
+  globalSent.push(now);
+  lastSeen.set(key, now);
+  if (lastSeen.size > 200) lastSeen.clear();
+  return true;
+}
+
+async function isEnabled(): Promise<boolean> {
+  if (serverDisabled) return false;
+  try {
+    const stored = await chrome.storage.sync.get({ [USAGE_STATS_KEY]: true });
+    if (stored[USAGE_STATS_KEY] === false) return false;
+  } catch {
+    return false;
+  }
+  if (isFirefox()) {
+    // Firefox's built-in consent: only send if the user granted interaction-data collection.
+    try {
+      const permissions = chrome.permissions as unknown as {
+        contains(p: { data_collection: string[] }): Promise<boolean>;
+      };
+      return await permissions.contains({ data_collection: ['technicalAndInteraction'] });
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+async function send(name: string, url: string, data: Data, screen?: string): Promise<void> {
+  if (!(await isEnabled())) return;
+  const manifest = chrome.runtime.getManifest() as chrome.runtime.Manifest & { update_url?: string };
+  // Store installs have an update_url; unpacked (developer) builds don't, so keep them separate.
+  const hostname = isFirefox() || manifest.update_url ? HOSTNAME : DEV_HOSTNAME;
+  const payload = {
+    website: WEBSITE_ID,
+    hostname,
+    url,
+    title: 'AggieSB+ extension',
+    language: navigator.language,
+    ...(screen ? { screen } : {}),
+    name,
+    data: { ...data, version: manifest.version },
+  };
+  try {
+    const response = await fetch(ENDPOINT, {
+      method: 'POST',
+      credentials: 'omit',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(umamiCache ? { 'x-umami-cache': umamiCache } : {}),
+      },
+      body: JSON.stringify({ type: 'event', payload }),
+    });
+    const result = await response.json().catch(() => null) as { cache?: string; disabled?: boolean } | null;
+    if (result?.disabled) serverDisabled = true;
+    if (typeof result?.cache === 'string') umamiCache = result.cache;
+  } catch {
+    /* stats are best effort */
+  }
+}
+
+/** ext-installed / ext-updated, from runtime.onInstalled. */
+function reportInstall(details: chrome.runtime.InstalledDetails): void {
+  const browser = isFirefox() ? 'firefox' : 'chrome';
+  if (details.reason === 'install') {
+    void send('ext-installed', '/extension/background', { browser });
+  } else if (details.reason === 'update' && details.previousVersion !== chrome.runtime.getManifest().version) {
+    void send('ext-updated', '/extension/background', { browser, previousVersion: String(details.previousVersion ?? 'unknown').slice(0, 20) });
+  }
+}
+
+/**
+ * Handles a USAGE_EVENT message from a content script or extension page.
+ * Unknown events, unexpected data and anything over the rate limits are dropped.
+ */
+function handleUsageMessage(message: { name?: unknown; data?: unknown; screen?: unknown }, sender: chrome.runtime.MessageSender): void {
+  const name = typeof message.name === 'string' ? message.name : '';
+  const schema = Object.prototype.hasOwnProperty.call(MESSAGE_EVENTS, name) ? MESSAGE_EVENTS[name] : null;
+  if (!schema) return;
+  const data = sanitize(schema, message.data);
+  if (!data) return;
+
+  // The site comes from the sender, not the message.
+  const site = siteOf(sender.url ?? sender.tab?.url);
+  if (!site) return;
+  const page = typeof data.page === 'string' ? data.page : '';
+  const url = `/extension/${site}${page ? `/${page}` : ''}`;
+  const screen = typeof message.screen === 'string' && /^\d{2,5}x\d{2,5}$/.test(message.screen) ? message.screen : undefined;
+
+  const source = sender.tab?.id !== undefined ? `tab:${sender.tab.id}` : site;
+  if (!allowRate(source, `${source}|${name}|${JSON.stringify(data)}`)) return;
+  void send(name, url, { ...data, site }, screen);
+}
+
 chrome.runtime.onInstalled.addListener(details => {
   chrome.alarms.create(REFRESH_ALARM, { periodInMinutes: 25 });
   if (details.reason === 'install') {
     void chrome.tabs.create({ url: chrome.runtime.getURL('onboarding.html') });
   }
+  reportInstall(details);
 });
 chrome.runtime.onStartup.addListener(() => {
   chrome.alarms.create(REFRESH_ALARM, { periodInMinutes: 25 });
@@ -139,6 +340,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'AUTH_STATUS') {
     getAuthStatus().then(sendResponse);
     return true;
+  }
+  if (message.type === 'USAGE_EVENT') {
+    handleUsageMessage(message, sender);
+    sendResponse({ ok: true });
+    return;
   }
   if (message.type === 'API_TRACKING_FETCH') {
     fetchWithAuth(message.payload.url, message.payload.options ?? {})

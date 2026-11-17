@@ -1,6 +1,7 @@
 import { extractTermFromUrl, convertUrlTermToTermCode, isRegistrationPage } from '../utils/page-detector';
 import { trackSection, untrackSection, getTrackedSections, TrackedSection } from '../services/tracking-service';
 import { debugLog } from '../utils/debug';
+import { reportUsage } from '../utils/usage';
 import { findSectionColumns, parseSectionRow, type ScannedSection } from '../utils/section-scanner';
 
 function buildSectionId(termCode: string, crn: string, subject: string, courseNumber: string, section: string): string {
@@ -158,6 +159,7 @@ function renderAddAlertsSection(container: HTMLElement, termCode: string | null)
     const sectionId = buildSectionId(termCode, crn, subj, crse, sec || 'XXX');
     const ok = await trackSection(sectionId, termCode);
     if (ok) {
+      reportUsage('ext-seat-alert-add', { source: 'manual' });
       subjInput.value = '';
       crseInput.value = '';
       secInput.value = '';
@@ -305,6 +307,7 @@ function renderAddAlertsSection(container: HTMLElement, termCode: string | null)
             
             const ok = await trackSection(item.sectionId, termCode);
             if (ok) {
+              reportUsage('ext-seat-alert-add', { source: 'scan' });
               addBtn.textContent = 'Added \u2713';
               addBtn.classList.add('success');
               alert('Alert added! Refresh the tab to see it in your watched sections.');

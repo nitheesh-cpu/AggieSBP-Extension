@@ -23,6 +23,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const themeToggle = document.getElementById('theme-toggle');
     const themeLabel = document.getElementById('theme-label');
     const aiSummariesToggle = document.getElementById('ai-summaries-toggle');
+    const usageStatsToggle = document.getElementById('usage-stats-toggle');
+
+    // Anonymous usage count; the background script drops it if usage stats are off.
+    chrome.runtime.sendMessage({
+        type: 'USAGE_EVENT',
+        name: 'ext-popup-open',
+        screen: screen.width + 'x' + screen.height
+    }, function () { void chrome.runtime.lastError; });
 
     // Load saved settings
     chrome.storage.sync.get(
@@ -30,6 +38,7 @@ document.addEventListener('DOMContentLoaded', function () {
             beautifierEnabled: false,
             professorSidebarEnabled: true,
             aiSummariesEnabled: true,
+            usageStatsEnabled: true,
             colorScheme: 'maroon',
             compactMode: true,
             theme: 'light' // Default to light theme
@@ -37,6 +46,9 @@ document.addEventListener('DOMContentLoaded', function () {
         function (items) {
             if (aiSummariesToggle) {
                 aiSummariesToggle.checked = items.aiSummariesEnabled !== false;
+            }
+            if (usageStatsToggle) {
+                usageStatsToggle.checked = items.usageStatsEnabled !== false;
             }
 
             // Update UI to reflect current settings
@@ -104,6 +116,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                 });
             });
+        });
+    }
+
+    // Usage stats toggle: read by the background script before every send.
+    if (usageStatsToggle) {
+        usageStatsToggle.addEventListener('change', function () {
+            chrome.storage.sync.set({ usageStatsEnabled: usageStatsToggle.checked });
         });
     }
 

@@ -16,6 +16,12 @@ import {
 } from '../utils/page-detector';
 import { debugLog, errorLog } from '../utils/debug';
 import { COURSE_DETAILS_BASE, withUtm } from '../config/constants';
+import { reportUsage } from '../utils/usage';
+
+/** Counts the first time the sidebar is opened on each kind of page. */
+function reportPanelOpen(panel: HTMLElement, page: string): void {
+  if (!panel.classList.contains('collapsed')) reportUsage('ext-panel-open', { page }, { oncePerLoad: true });
+}
 
 /** True when the sidebar is in the DOM and expanded. Used to keep it open when it's rebuilt. */
 function isPanelOpen(): boolean {
@@ -527,11 +533,19 @@ function createProfessorCard(professor: ProfessorDetails, currentCourseCode?: st
     </div>
   `;
 
+  card.querySelector('.prof-card-actions')?.addEventListener('click', (event) => {
+    const link = (event.target as Element | null)?.closest('a');
+    if (!link) return;
+    const action = /ratemyprofessors\.com/i.test(link.href) ? 'rmp' : 'details';
+    reportUsage('ext-professor-action', { action }, { oncePerLoad: true });
+  });
+
   const summaryToggle = card.querySelector<HTMLButtonElement>('.prof-summ-toggle');
   summaryToggle?.addEventListener('click', () => {
     const container = card.querySelector('.prof-summ-container');
     if (!container) return;
     const expanded = summaryToggle.getAttribute('aria-expanded') !== 'true';
+    if (expanded) reportUsage('ext-professor-action', { action: 'expand-summary' }, { oncePerLoad: true });
     container.classList.toggle('prof-summ-compact', !expanded);
     summaryToggle.setAttribute('aria-expanded', String(expanded));
     summaryToggle.textContent = expanded ? 'Show compact summary' : 'Expand full summary';
@@ -688,6 +702,7 @@ function createProfessorPanel(
   // Event listeners
   toggleBtn.addEventListener('click', () => {
     panel.classList.toggle('collapsed');
+    reportPanelOpen(panel, 'sections');
   });
 
   header.querySelector('.prof-panel-close')?.addEventListener('click', () => {
@@ -866,7 +881,10 @@ export function initializeAlertsOnlyPanel(): void {
   document.body.appendChild(panel);
 
   // Wire up toggle
-  toggleBtn.addEventListener('click', () => panel.classList.toggle('collapsed'));
+  toggleBtn.addEventListener('click', () => {
+    panel.classList.toggle('collapsed');
+    reportPanelOpen(panel, 'scheduler');
+  });
   header.querySelector('.prof-panel-close')?.addEventListener('click', () =>
     panel.classList.add('collapsed')
   );
@@ -1027,7 +1045,10 @@ export function initializeScheduleFitPanel(): void {
   document.body.appendChild(toggleBtn);
   document.body.appendChild(panel);
 
-  toggleBtn.addEventListener('click', () => panel.classList.toggle('collapsed'));
+  toggleBtn.addEventListener('click', () => {
+    panel.classList.toggle('collapsed');
+    reportPanelOpen(panel, 'current-schedule');
+  });
   header.querySelector('.prof-panel-close')?.addEventListener('click', () =>
     panel.classList.add('collapsed')
   );
@@ -1049,6 +1070,7 @@ export function initializeScheduleFitPanel(): void {
       return;
     }
     if (status) status.textContent = `Imported ${blocks.length} block(s). Opening Fit My Schedule...`;
+    reportUsage('ext-fit-import', { blocks: blocks.length });
     openFitWithBlocks(blocks);
   });
 
