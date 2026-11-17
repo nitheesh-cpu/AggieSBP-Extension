@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Unit tests
+        run: node --test tests/*.cjs
+
+      # `npm run firefox` runs the full Chrome build first (`npm run build`) and
+      # then derives build-firefox/, so this covers both targets.
+      - name: Build Chrome and Firefox
+        run: npm run firefox
+
+      # Firefox MV3 loads the background script as a classic script, so it must
+      # not contain ES `import` statements. Parsing it as a classic script fails
+      # on any import statement.
+      - name: Check background.js is a classic script
+        run: |
+          for f in build/background.js build-firefox/background.js; do
+            test -f "$f" || { echo "::error::$f missing"; exit 1; }
+            node -e "new (require('vm').Script)(require('fs').readFileSync(process.argv[1],'utf8'))" "$f" \
+              || { echo "::error::$f is not a classic script (has import statements?)"; exit 1; }
+            echo "OK: $f"
+          done

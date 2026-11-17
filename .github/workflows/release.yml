@@ -1,0 +1,211 @@
+name: Release
+
+# Runs on version tags (v*): verifies the tag matches both manifests, runs the
+# tests, builds the Chrome and Firefox zips and attaches them to a GitHub
+# Release. If the Chrome Web Store secrets below are set, it also uploads
+# build.zip to the Chrome Web Store and submits it for review.
+#
+# Repository secrets (Settings > Secrets and variables > Actions) for the Chrome
+# Web Store job. All five must be set, otherwise the job is skipped:
+#   CWS_PUBLISHER_ID    Publisher ID from the Chrome Web Store developer dashboard
+#                       (Account section).
+#   CWS_EXTENSION_ID    Item ID from the Chrome Web Store developer dashboard.
+#   CWS_CLIENT_ID       OAuth client ID and secret from a Google Cloud project
+#   CWS_CLIENT_SECRET   that has the Chrome Web Store API enabled.
+#   CWS_REFRESH_TOKEN   OAuth refresh token for the Google account that owns the
+#                       item (scope https://www.googleapis.com/auth/chromewebstore).
+# Uses the Chrome Web Store API v2 (chromewebstore.googleapis.com); the older
+# v1.1 API is no longer documented. See
+# https://developer.chrome.com/docs/webstore/using-api
+#
+# Manual run (Actions > Release > Run workflow): builds and uploads the current
+# ref to the Web Store. Set "submit_for_review" to false to upload a draft only.
+# Manual runs do not create a GitHub Release.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      submit_for_review:
+        description: "Submit the uploaded version to the Chrome Web Store for review (false = upload draft only)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Verify versions
+        id: ver
+        run: |
+          chrome=$(node -p "require('./public/manifest.json').version")
+          firefox=$(node -p "require('./public/manifest-firefox.json').version")
+          echo "manifest.json=$chrome manifest-firefox.json=$firefox"
+          if [ "$chrome" != "$firefox" ]; then
+            echo "::error::Manifest versions differ ($chrome vs $firefox)"; exit 1
+          fi
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            tag="${GITHUB_REF_NAME#v}"
+            if [ "$tag" != "$chrome" ]; then
+              echo "::error::Tag '$GITHUB_REF_NAME' does not match manifest version '$chrome'"; exit 1
+            fi
+          fi
+          echo "version=$chrome" >> "$GITHUB_OUTPUT"
+
+      - run: npm ci
+
+      - name: Unit tests
+        run: node --test tests/*.cjs
+
+      - name: Build Chrome zip
+        run: npm run build:zip
+
+      - name: Build Firefox zip
+        run: npm run firefox:zip
+
+      - name: Check background.js is a classic script
+        run: |
+          for f in build/background.js build-firefox/background.js; do
+            node -e "new (require('vm').Script)(require('fs').readFileSync(process.argv[1],'utf8'))" "$f" \
+              || { echo "::error::$f has import statements"; exit 1; }
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: extension-zips
+          path: |
+            build.zip
+            build-firefox.zip
+          if-no-files-found: error
+
+  github-release:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: extension-zips
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build.zip
+            build-firefox.zip
+          generate_release_notes: true
+
+  check-cws-secrets:
+    needs: build
+    runs-on: ubuntu-latest
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
+    env:
+      CWS_PUBLISHER_ID: ${{ secrets.CWS_PUBLISHER_ID }}
+      CWS_EXTENSION_ID: ${{ secrets.CWS_EXTENSION_ID }}
+      CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+      CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+      CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+    steps:
+      - id: check
+        run: |
+          if [ -n "$CWS_PUBLISHER_ID" ] && [ -n "$CWS_EXTENSION_ID" ] && [ -n "$CWS_CLIENT_ID" ] && [ -n "$CWS_CLIENT_SECRET" ] && [ -n "$CWS_REFRESH_TOKEN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Chrome Web Store secrets not set; skipping upload."
+          fi
+
+  chrome-web-store:
+    needs: [build, check-cws-secrets]
+    if: needs.check-cws-secrets.outputs.configured == 'true'
+    runs-on: ubuntu-latest
+    env:
+      CWS_ITEM: publishers/${{ secrets.CWS_PUBLISHER_ID }}/items/${{ secrets.CWS_EXTENSION_ID }}
+      CWS_CLIENT_ID: ${{ secrets.CWS_CLIENT_ID }}
+      CWS_CLIENT_SECRET: ${{ secrets.CWS_CLIENT_SECRET }}
+      CWS_REFRESH_TOKEN: ${{ secrets.CWS_REFRESH_TOKEN }}
+      # Tag pushes always submit; manual runs follow the input (default true).
+      SUBMIT: ${{ github.event_name != 'workflow_dispatch' || inputs.submit_for_review }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: extension-zips
+
+      - name: Get access token
+        run: |
+          resp=$(curl -sS https://oauth2.googleapis.com/token \
+            -d client_id="$CWS_CLIENT_ID" \
+            -d client_secret="$CWS_CLIENT_SECRET" \
+            -d refresh_token="$CWS_REFRESH_TOKEN" \
+            -d grant_type=refresh_token)
+          token=$(echo "$resp" | jq -r '.access_token // empty')
+          if [ -z "$token" ]; then
+            echo "::error::Could not get an access token: $(echo "$resp" | jq -r '.error // "unknown"') $(echo "$resp" | jq -r '.error_description // ""')"
+            exit 1
+          fi
+          echo "::add-mask::$token"
+          echo "CWS_TOKEN=$token" >> "$GITHUB_ENV"
+
+      - name: Upload build.zip
+        run: |
+          # v2: UploadItemPackageResponse.uploadState is SUCCEEDED, IN_PROGRESS,
+          # FAILED or NOT_FOUND. IN_PROGRESS is finished asynchronously; poll
+          # fetchStatus.lastAsyncUploadState until it settles.
+          resp=$(curl -sS -X POST \
+            -H "Authorization: Bearer $CWS_TOKEN" \
+            -T build.zip \
+            "https://chromewebstore.googleapis.com/upload/v2/$CWS_ITEM:upload")
+          echo "$resp" | jq .
+          state=$(echo "$resp" | jq -r '.uploadState // empty')
+          for i in $(seq 1 12); do
+            [ "$state" = "IN_PROGRESS" ] || break
+            sleep 10
+            resp=$(curl -sS -H "Authorization: Bearer $CWS_TOKEN" \
+              "https://chromewebstore.googleapis.com/v2/$CWS_ITEM:fetchStatus")
+            state=$(echo "$resp" | jq -r '.lastAsyncUploadState // empty')
+          done
+          if [ "$state" != "SUCCEEDED" ]; then
+            echo "::error::Chrome Web Store upload failed (state='$state'): $(echo "$resp" | jq -c '.error // .')"
+            exit 1
+          fi
+          echo "Upload succeeded."
+
+      - name: Submit for review
+        if: env.SUBMIT == 'true'
+        run: |
+          resp=$(curl -sS -X POST \
+            -H "Authorization: Bearer $CWS_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{"publishType": "DEFAULT_PUBLISH"}' \
+            "https://chromewebstore.googleapis.com/v2/$CWS_ITEM:publish")
+          echo "$resp" | jq .
+          # v2: PublishItemResponse.state. PENDING_REVIEW is the normal answer;
+          # anything else (REJECTED, CANCELLED, an error body) fails the job.
+          state=$(echo "$resp" | jq -r '.state // empty')
+          case "$state" in
+            PENDING_REVIEW|PUBLISHED|STAGED|PUBLISHED_TO_TESTERS)
+              echo "Submitted: $state" ;;
+            *)
+              echo "::error::Publish request was not accepted (state='$state'): $(echo "$resp" | jq -c '.error // .')"
+              exit 1 ;;
+          esac
+
+      - name: Draft only
+        if: env.SUBMIT != 'true'
+        run: echo "Uploaded as a draft; submit it for review from the Chrome Web Store dashboard."
