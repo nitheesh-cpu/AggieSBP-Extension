@@ -28,17 +28,43 @@ A Chrome and Firefox extension that puts professor grades, ratings and review su
 
 No remote code. Course data only goes to AggieSB+ when you click import.
 
+Anonymous usage counts (sidebar opened, courses imported, and so on, with no names, courses, grades or professors) go to the AggieSB+ Umami instance from the background script (`src/background.ts`). Users can turn them off under Settings in the popup (`usageStatsEnabled` in `chrome.storage.sync`). Firefox builds send nothing unless the user grants the optional `technicalAndInteraction` data collection permission. The privacy policy is at https://aggieschedulebuilderplus.vercel.app/privacy (source: `frontend/src/app/privacy/page.tsx`); keep it in sync when the event list changes.
+
 ## Development
 
+Prerequisites: Node 20+ (`package.json` does not declare an `engines` field).
+
 ```bash
-npm install
+npm ci
 npm run build          # Chrome build in build/
-npm run firefox        # Firefox build in build-firefox/
+npm run firefox        # Firefox build in build-firefox/ (runs the Chrome build first)
 node --test tests/*.cjs
 ```
 
-Load `build/` as an unpacked extension in `chrome://extensions`, or `build-firefox/manifest.json` as a temporary add-on in Firefox.
+Store zips: `npm run build:zip` (`build.zip`) and `npm run firefox:zip` (`build-firefox.zip`).
 
-Store zips: `npm run build:zip` and `npm run firefox:zip`.
+### Load it locally
+
+- Chrome: open `chrome://extensions`, enable Developer mode, choose Load unpacked, and select `build/`.
+- Firefox: open `about:debugging#/runtime/this-firefox`, choose Load Temporary Add-on, and select `build-firefox/manifest.json`.
+
+### End-to-end tests
+
+Playwright loads the real built extension into Chromium and checks what a user sees: the sidebar button and professor panel on College Scheduler, Fit My Schedule, seat alerts, the Howdy import panel, the popup, onboarding and the anonymous usage events. No real TAMU site or AggieSB+ server is contacted: the tests serve small HTML fixtures (`e2e/fixtures/`) at the real URLs and answer the API with mocks (`e2e/helpers/`), and analytics requests are captured, never sent.
+
+```bash
+npm ci
+npx playwright install chromium    # once; add --with-deps on Linux
+npm run build                      # the tests load build/
+npm run test:e2e                   # HEADED=1 npm run test:e2e to watch; npx playwright show-report for the report
+```
+
+### Configuration
+
+The API and site URLs are constants in `src/config/constants.ts` (`EXTERNAL_API_BASE`, `COURSE_DETAILS_BASE`). There are no environment variables; edit that file to point at a local backend or site. The manifests already allow `http://localhost:8000` and `http://localhost:3000`.
 
 Built with TypeScript, Vite and Manifest V3.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
