@@ -30,3 +30,8 @@ build-firefox
 /build.zip
 /build-firefox.zip
 images/*xcf
+
+# Playwright end-to-end test output
+test-results
+playwright-report
+blob-report

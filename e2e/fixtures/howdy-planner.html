@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Howdy</title></head>
+<body>
+  <h1>Degree Planner</h1>
+  <button type="button">Card View</button>
+
+  <cdk-accordion-item aria-expanded="true">
+    <ion-card>
+      <ion-card-title><span class="term-title">2025 - Fall</span></ion-card-title>
+      <ion-toggle aria-checked="true"></ion-toggle>
+      <div class="semester-content">
+        <div data-semester="fall" data-year="2025-2026"></div>
+        <course-table-view>
+          <div class="course-info">CSCE - 120 (4)</div>
+          <div class="course-title">Program Design and Concepts</div>
+          <ion-badge>A</ion-badge>
+        </course-table-view>
+        <course-table-view>
+          <div class="course-info">MATH - 151 (4)</div>
+          <div class="course-title">Engineering Mathematics I</div>
+          <ion-badge>In Progress</ion-badge>
+        </course-table-view>
+      </div>
+    </ion-card>
+  </cdk-accordion-item>
+
+  <cdk-accordion-item aria-expanded="true">
+    <ion-card>
+      <ion-card-title><span class="term-title">2027 - Spring</span></ion-card-title>
+      <ion-toggle aria-checked="false"></ion-toggle>
+      <div class="semester-content">
+        <div data-semester="spring" data-year="2026-2027"></div>
+        <course-table-view>
+          <div class="course-info">CSCE - 221 (4)</div>
+          <div class="course-title">Data Structures and Algorithms</div>
+        </course-table-view>
+      </div>
+    </ion-card>
+  </cdk-accordion-item>
+</body>
+</html>

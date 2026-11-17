@@ -2,6 +2,7 @@
   "name": "aggie-professor-compare",
   "version": "2.0.0",
   "description": "Chrome extension to compare professors on Texas A&M registration",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,6 +10,7 @@
     "build:zip": "npm run build && node scripts/zip.mjs build build.zip",
     "firefox": "npm run build && node scripts/build-firefox.mjs",
     "firefox:zip": "npm run firefox && node scripts/zip.mjs build-firefox build-firefox.zip",
+    "test:e2e": "playwright test",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
@@ -17,6 +19,7 @@
     "react-dom": "^19.1.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.1",
     "@types/chrome": "^0.1.4",
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
