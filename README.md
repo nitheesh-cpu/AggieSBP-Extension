@@ -65,6 +65,20 @@ The API and site URLs are constants in `src/config/constants.ts` (`EXTERNAL_API_
 
 Built with TypeScript, Vite and Manifest V3.
 
+## Reproduce the Firefox Add-ons build
+
+The release build uses Ubuntu 24.04 (x86-64) and Node.js 24 with its bundled npm.
+Unpack the submitted source archive and run these commands from the directory
+containing `package-lock.json`:
+
+```bash
+npm ci
+npm run firefox
+```
+
+Compare the files in `build-firefox/` with the submitted add-on. The build needs
+no API credentials or environment variables.
+
 ## License
 
 MIT, see [LICENSE](LICENSE).

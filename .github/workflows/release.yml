@@ -1,9 +1,12 @@
 name: Release
 
 # Runs on version tags (v*): verifies the tag matches both manifests, runs the
-# tests, builds the Chrome and Firefox zips and attaches them to a GitHub
+# unit and Chromium end-to-end tests, builds both zips and attaches them to a GitHub
 # Release. If the Chrome Web Store secrets below are set, it also uploads
 # build.zip to the Chrome Web Store and submits it for review.
+# Tag releases also submit to Firefox Add-ons when WEB_EXT_API_KEY (JWT issuer)
+# and WEB_EXT_API_SECRET (JWT secret) are configured as repository secrets.
+# Get them from https://addons.mozilla.org/en-US/developers/addon/api/key/
 #
 # Repository secrets (Settings > Secrets and variables > Actions) for the Chrome
 # Web Store job. All five must be set, otherwise the job is skipped:
@@ -38,7 +41,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.ver.outputs.version }}
     steps:
@@ -46,7 +49,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Verify versions
@@ -71,11 +74,8 @@ jobs:
       - name: Unit tests
         run: node --test tests/*.cjs
 
-      - name: Build Chrome zip
-        run: npm run build:zip
-
-      - name: Build Firefox zip
-        run: npm run firefox:zip
+      - name: Build Chrome and Firefox
+        run: npm run firefox
 
       - name: Check background.js is a classic script
         run: |
@@ -83,6 +83,27 @@ jobs:
             node -e "new (require('vm').Script)(require('fs').readFileSync(process.argv[1],'utf8'))" "$f" \
               || { echo "::error::$f has import statements"; exit 1; }
           done
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
+      - name: Package the extension builds
+        run: |
+          node scripts/zip.mjs build build.zip
+          node scripts/zip.mjs build-firefox build-firefox.zip
 
       - uses: actions/upload-artifact@v4
         with:
@@ -209,3 +230,59 @@ jobs:
       - name: Draft only
         if: env.SUBMIT != 'true'
         run: echo "Uploaded as a draft; submit it for review from the Chrome Web Store dashboard."
+
+  firefox-add-ons:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check Firefox Add-ons credentials
+        id: credentials
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.WEB_EXT_API_KEY }}
+          WEB_EXT_API_SECRET: ${{ secrets.WEB_EXT_API_SECRET }}
+        run: |
+          if [ -z "$WEB_EXT_API_KEY" ] && [ -z "$WEB_EXT_API_SECRET" ]; then
+            echo "Firefox Add-ons credentials are unset; skipping submission."
+          elif [ -z "$WEB_EXT_API_KEY" ] || [ -z "$WEB_EXT_API_SECRET" ]; then
+            echo "::error::Set both WEB_EXT_API_KEY and WEB_EXT_API_SECRET."
+            exit 1
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.credentials.outputs.configured == 'true'
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v4
+        if: steps.credentials.outputs.configured == 'true'
+        with:
+          name: extension-zips
+          path: ${{ runner.temp }}/extension-zips
+
+      - uses: actions/setup-node@v4
+        if: steps.credentials.outputs.configured == 'true'
+        with:
+          node-version: 24
+
+      - name: Prepare Firefox package and reviewer source
+        if: steps.credentials.outputs.configured == 'true'
+        run: |
+          unzip -q "$RUNNER_TEMP/extension-zips/build-firefox.zip" -d "$RUNNER_TEMP/firefox-package"
+          git archive --format=zip --output="$RUNNER_TEMP/firefox-source.zip" HEAD
+          npm install --prefix "$RUNNER_TEMP/amo-tools" --ignore-scripts --no-audit --no-fund web-ext@10.8.0
+
+      - name: Submit to Firefox Add-ons
+        if: steps.credentials.outputs.configured == 'true'
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.WEB_EXT_API_KEY }}
+          WEB_EXT_API_SECRET: ${{ secrets.WEB_EXT_API_SECRET }}
+        run: |
+          "$RUNNER_TEMP/amo-tools/node_modules/.bin/web-ext" sign \
+            --source-dir "$RUNNER_TEMP/firefox-package" \
+            --channel listed \
+            --upload-source-code "$RUNNER_TEMP/firefox-source.zip" \
+            --approval-timeout 0 \
+            --no-config-discovery
