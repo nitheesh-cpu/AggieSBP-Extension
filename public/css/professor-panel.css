@@ -757,6 +757,17 @@
   background: var(--prof-grade-f);
 }
 
+.prof-grades-caption {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--prof-text-muted);
+}
+
+.prof-grades-caption strong {
+  color: var(--prof-text-primary);
+  font-weight: 600;
+}
+
 .prof-grades-legend {
   display: flex;
   justify-content: space-between;

@@ -1,4 +1,4 @@
-import { getProfessorDetailsUrl, getRateMyProfessorUrl, fetchCourseDataForTerm, getTermCodeFromDescription, fetchCourseData, fetchProfessorDetails, fetchRecentReviews, type ProfessorDetails, type CourseSummary, type OverallSummary, type RecentReview } from '../services/professor-service';
+import { getCourseDetailsUrl, getProfessorDetailsUrl, getRateMyProfessorUrl, fetchCourseDataForTerm, getTermCodeFromDescription, fetchCourseData, fetchProfessorDetails, fetchRecentReviews, type ProfessorDetails, type CourseSummary, type OverallSummary, type RecentReview } from '../services/professor-service';
 import { getSelectedCourseData } from '../services/api';
 import { renderAlertsTab } from './alerts-panel';
 import { createAccountStatus } from './account-status';
@@ -336,6 +336,13 @@ function createProfessorCard(professor: ProfessorDetails, currentCourseCode?: st
     }
   }
 
+  // Official GPA from the grade reports. Shown even without a review profile:
+  // an instructor with no reviews still has grades.
+  const avgGpa = professor.grades?.avgGpa;
+  const totalStudents = professor.grades?.totalStudents;
+  const gradeCaptionHTML = gradeDistHTML && typeof avgGpa === 'number' ? `
+      <p class="prof-grades-caption">Official grades · <strong>${avgGpa.toFixed(2)}</strong> GPA${totalStudents ? ` · ${totalStudents.toLocaleString('en-US')} students` : ''}</p>` : '';
+
   // Get review count - use totalReviews from API
   const reviewCount = professor.totalReviews || 0;
   const courseRating = professor.courseRating ?? professor.courseSummary?.rating;
@@ -519,16 +526,20 @@ function createProfessorCard(professor: ProfessorDetails, currentCourseCode?: st
 
     ${gradeDistHTML ? `
     <div class="prof-grades">
+      ${gradeCaptionHTML}
       <div class="prof-grades-bar">${gradeDistHTML}</div>
       <div class="prof-grades-legend">${gradeLegendHTML}</div>
     </div>
     ` : ''}
 
     <div class="prof-card-actions">
-      <a href="${getProfessorDetailsUrl(professor.id)}" target="_blank" rel="noopener noreferrer" class="prof-btn prof-btn-primary">
+      ${professor.id ? `<a href="${getProfessorDetailsUrl(professor.id)}" target="_blank" rel="noopener noreferrer" class="prof-btn prof-btn-primary">
         ${ICONS.graduation}
         ${isEmpty ? 'View professor ↗' : 'Professor'}
-      </a>
+      </a>` : currentCourseCode ? `<a href="${getCourseDetailsUrl(currentCourseCode.replace(/\s+/g, ''))}" target="_blank" rel="noopener noreferrer" class="prof-btn prof-btn-primary">
+        ${ICONS.graduation}
+        Course grades ↗
+      </a>` : ''}
       ${rmpUrl ? `<a href="${rmpUrl}" target="_blank" rel="noopener noreferrer" class="prof-btn prof-btn-primary">Rate My Professors ↗</a>` : ''}
     </div>
   `;
