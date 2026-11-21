@@ -289,7 +289,7 @@ body {
 }
 
 /* Keep the panel clear of the practice banner and the nav bar. */
-.professor-compare-panel { top: 96px; max-height: calc(100vh - 116px); }
+.professor-compare-panel { top: 96px; max-height: calc(100dvh - 116px); }
 
 /* ── Mock push notification ── */
 .mock-notification {
