@@ -73,6 +73,7 @@ function panelModeForCurrentPage(): PanelMode {
   syncPanel();
 
   // Schedule Builder is a SPA: pick up client-side navigation and re-add the button if it disappears.
+  // Intentional polling: see docs/context/gotchas.md G-003
   setInterval(syncPanel, 1000);
   window.addEventListener('popstate', () => setTimeout(syncPanel, 100));
 

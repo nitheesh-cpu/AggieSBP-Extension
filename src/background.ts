@@ -1,4 +1,5 @@
 // Keep this entry self-contained: content scripts cannot import shared ES module chunks.
+// Intentional: no `import` anywhere in this file (classic script on Firefox, run in a VM by tests). See docs/context/gotchas.md G-006
 const EXTERNAL_API_BASE = 'https://api-aggiesbp.nitheeshk.com';
 
 const REFRESH_ALARM = 'agsbp-session-refresh';

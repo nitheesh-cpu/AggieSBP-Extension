@@ -38,6 +38,7 @@ export default defineConfig({
         onboarding: './onboarding.html',
         background: './src/background.ts',
         // Content scripts are built separately as IIFEs (vite.content.config.ts).
+        // Intentional: do not add them here. See docs/context/gotchas.md G-001
       },
       output: {
         entryFileNames: (chunkInfo) => {

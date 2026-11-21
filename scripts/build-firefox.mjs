@@ -30,6 +30,7 @@ async function run() {
   await ensureFile(path.join(chromeBuildDir, "manifest.json"));
   await ensureFile(firefoxManifestTemplatePath);
 
+  // Intentional: see docs/context/gotchas.md G-008
   // Start clean so assets from older builds (hashed filenames) don't end up in the package.
   await rm(firefoxBuildDir, { recursive: true, force: true });
   await mkdir(firefoxBuildDir, { recursive: true });

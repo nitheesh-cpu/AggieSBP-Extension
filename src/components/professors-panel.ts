@@ -192,6 +192,7 @@ async function loadRecentReviews(container: HTMLElement): Promise<void> {
 /**
  * Listen for settings change messages from popup
  */
+// Intentional: register once, panels are rebuilt on every navigation. See docs/context/gotchas.md G-004
 let settingsListenerRegistered = false;
 
 function setupSettingsListener(): void {
@@ -483,6 +484,7 @@ function createProfessorCard(professor: ProfessorDetails, currentCourseCode?: st
   }
 
   // Build dropdown HTML if multiple options available
+  // Intentional: labels/ids come from API/RMP text; keep escapeSummaryText. See docs/context/gotchas.md G-005
   const hasDropdown = summaryOptions.length > 1;
   const dropdownHTML = hasDropdown ? `
     <select class="prof-summary-select" data-professor-id="${escapeSummaryText(String(professor.id))}">

@@ -20,6 +20,7 @@ import {
 } from '../utils/howdy-planner';
 import { reportUsage } from '../utils/usage';
 
+// Must be the production site in released builds (never localhost). See docs/context/gotchas.md G-009
 const SITE_URL = 'https://aggieschedulebuilderplus.vercel.app';
 const HOST_ID = 'aggiesbp-howdy-import';
 const DISMISS_KEY = 'aggiesbp-howdy-import-dismissed';

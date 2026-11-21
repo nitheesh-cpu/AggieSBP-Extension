@@ -5,6 +5,7 @@ import { defineConfig } from 'vite';
 // with the popup lets Rollup hoist shared code into an imported chunk, which
 // breaks with "Cannot use import statement outside a module".
 //
+// Intentional: see docs/context/gotchas.md G-001 (and decisions.md D-001).
 // Usage: vite build -c vite.content.config.ts --mode <main|howdy>
 const CONTENT_ENTRIES: Record<string, string> = {
   main: './src/content/main.ts',
