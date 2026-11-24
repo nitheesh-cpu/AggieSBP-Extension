@@ -221,6 +221,7 @@ function checkAuthState() {
                 </div>
             </div>
             ${signedIn ? '<a href="https://aggiesbp.com/profile/alerts" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="grid-column: 1 / -1;">Manage my alerts ↗</a>'
+                + '<button type="button" id="sign-out" class="btn btn-secondary" style="grid-column: 1 / -1;" title="Also signs you out of the AggieSB+ website in this browser">Sign out of this browser</button>'
                 : signedOut ? '<a href="connect.html?from=popup" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="grid-column: 1 / -1;">Sign in to AggieSB+ ↗</a>'
                 : '<button type="button" id="retry-auth" class="btn btn-secondary">Retry</button>'}
         `;
@@ -228,6 +229,15 @@ function checkAuthState() {
         if (signedIn && response.email) email.textContent = response.email;
         else email.remove();
         document.getElementById('retry-auth')?.addEventListener('click', checkAuthState);
+        document.getElementById('sign-out')?.addEventListener('click', function () {
+            // The extension borrows the website's session, so this signs out of both (D-021).
+            this.disabled = true;
+            this.textContent = 'Signing out…';
+            chrome.runtime.sendMessage({ type: 'SIGN_OUT' }, function () {
+                void chrome.runtime.lastError;
+                checkAuthState();
+            });
+        });
     });
 }
 

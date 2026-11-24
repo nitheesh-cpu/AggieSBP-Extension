@@ -340,8 +340,53 @@ async function getAuthStatus(): Promise<{ state: 'signed_in' | 'signed_out' | 'u
   } catch { return { state: 'unavailable' }; }
 }
 
+const SESSION_COOKIES = ['st-access-token', 'st-refresh-token', 'sFrontToken', 'st-last-access-token-update'];
+
+/** Asks the API to revoke this source's session. Best effort: the caller clears cookies either way. */
+async function revokeSession(source: SessionSource): Promise<boolean> {
+  const call = async (): Promise<Response> => {
+    const token = (await readCookie(source, 'st-access-token'))?.value;
+    return fetch(`${source.api}/auth/signout`, {
+      method: 'POST', credentials: 'omit',
+      headers: { rid: 'session', 'st-auth-mode': 'header', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    });
+  };
+  try {
+    let response = await call();
+    if (response.status === 401 && await refreshSession(source)) response = await call();
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Signs out of AggieSB+ in this browser: revokes each session on the API, then
+ * deletes the site's sign-in cookies for every production source (the website
+ * shares them, so it is signed out too). A source we lack host access to throws
+ * on read and remove; it had no session we could use anyway. D-021.
+ */
+async function signOut(): Promise<{ ok: boolean }> {
+  let ok = true;
+  for (const source of SESSION_SOURCES.filter(source => source.api === EXTERNAL_API_BASE)) {
+    const hasSession = !!((await readCookie(source, 'st-access-token'))?.value ||
+                          (await readCookie(source, 'st-refresh-token'))?.value);
+    if (hasSession && !(await revokeSession(source))) ok = false;
+    for (const name of SESSION_COOKIES) {
+      try { await chrome.cookies.remove({ url: source.web, name }); } catch { /* no host access */ }
+    }
+  }
+  return { ok };
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id) return;
+  if (message.type === 'SIGN_OUT') {
+    // Extension pages only (the popup, also when opened in a tab). Content scripts report the website's URL.
+    if (!sender.url?.startsWith(chrome.runtime.getURL(''))) { sendResponse({ ok: false }); return; }
+    signOut().then(sendResponse).catch(() => sendResponse({ ok: false }));
+    return true;
+  }
   if (message.type === 'AUTH_STATUS') {
     getAuthStatus().then(sendResponse);
     return true;

@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures';
+import { E2E_ACCESS_TOKEN } from './helpers/mocks';
 
 test.describe('Popup', () => {
   test('switches between the Home, Help and Settings tabs', async ({ context, extensionId, mocks }) => {
@@ -68,5 +69,22 @@ test.describe('Popup', () => {
     await expect(link).toHaveAttribute('href', 'https://aggiesbp.com/privacy');
     await expect(link).toHaveAttribute('target', '_blank');
     await expect(link).toHaveAttribute('rel', /noopener/);
+  });
+
+  test('Sign out of this browser revokes the session and clears the site cookies (D-021)', async ({ context, extensionId, mocks }) => {
+    const OLD_SITE = 'https://aggieschedulebuilderplus.vercel.app';
+    await context.addCookies([
+      { name: 'st-access-token', value: E2E_ACCESS_TOKEN, url: OLD_SITE },
+      { name: 'st-refresh-token', value: 'e2e-refresh', url: OLD_SITE },
+    ]);
+    const page = await context.newPage();
+    await page.goto(`chrome-extension://${extensionId}/index.html`);
+    await expect(page.locator('#auth-state-container')).toContainText('Signed in to AggieSB+');
+    await expect(page.locator('#auth-state-container')).toContainText('student@example.test');
+
+    await page.getByRole('button', { name: 'Sign out of this browser' }).click();
+    await expect(page.locator('#auth-state-container')).toContainText('Not signed in');
+    expect(mocks.requests.filter(request => request.includes('/auth/signout'))).toHaveLength(1);
+    expect((await context.cookies(OLD_SITE)).filter(cookie => cookie.name.startsWith('st-'))).toEqual([]);
   });
 });

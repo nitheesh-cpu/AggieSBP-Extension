@@ -19,7 +19,7 @@ function setup(fetch, tokens = { 'st-access-token': 'old-access', 'st-refresh-to
   const context = {
     URL, Headers, Response, Date, fetch, exports: {},
     chrome: {
-      runtime: { id: 'test', onMessage: listener, onStartup: listener, onInstalled: listener },
+      runtime: { id: 'test', getURL: path => `chrome-extension://test/${path}`, onMessage: { addListener(fn) { context.onMessageListener = fn; } }, onStartup: listener, onInstalled: listener },
       alarms: { onAlarm: listener, create() {} },
       cookies: {
         get: async ({ url, name }) => jar.get(`${url}:${name}`) || null,
@@ -140,4 +140,61 @@ test('without access to the new domain the old session still works (D-020)', asy
     return get(details);
   };
   assert.equal((await context.getAuthStatus()).state, 'signed_in');
+});
+
+test('sign out revokes the session and clears sign-in cookies on both domains (D-021)', async () => {
+  const calls = [];
+  const { context, jar } = setup(async (url, init) => { calls.push([url, new Headers(init.headers).get('Authorization')]); return json({}); });
+  jar.set(`${NEW_WEB}:st-refresh-token`, { name: 'st-refresh-token', value: 'new-refresh' });
+  jar.set(`${NEW_WEB}:sFrontToken`, { name: 'sFrontToken', value: 'front' });
+  const result = await context.signOut();
+  assert.equal(result.ok, true);
+  assert.deepEqual(calls.map(([url]) => url), [`${API}/auth/signout`, `${API}/auth/signout`]);
+  assert.equal(calls[1][1], 'Bearer old-access');
+  assert.equal([...jar.keys()].filter(key => key.startsWith(NEW_WEB) || key.startsWith(WEB)).length, 0);
+});
+
+test('sign out still clears cookies when the API is unreachable (D-021)', async () => {
+  const { context, jar } = setup(async () => { throw new Error('offline'); });
+  const result = await context.signOut();
+  assert.equal(result.ok, false);
+  assert.equal(jar.size, 0);
+});
+
+test('sign out refreshes an expired token before revoking (D-021)', async () => {
+  const { context } = setup(async (url, init) => {
+    if (url.endsWith('/auth/session/refresh')) return json({}, 200, { 'st-access-token': 'new-access', 'st-refresh-token': 'new-refresh' });
+    return new Headers(init.headers).get('Authorization') === 'Bearer new-access' ? json({}) : json({}, 401);
+  });
+  assert.equal((await context.signOut()).ok, true);
+});
+
+test('sign out works without access to the new domain (D-021)', async () => {
+  const { context, jar } = setup(async () => json({}));
+  const { get, remove } = context.chrome.cookies;
+  context.chrome.cookies.get = async details => { if (details.url === NEW_WEB) throw new Error('No host permissions'); return get(details); };
+  context.chrome.cookies.remove = async details => { if (details.url === NEW_WEB) throw new Error('No host permissions'); return remove(details); };
+  assert.equal((await context.signOut()).ok, true);
+  assert.equal(jar.size, 0);
+});
+
+test('content scripts cannot sign the user out (D-021)', async () => {
+  let fetched = false;
+  const { context, jar } = setup(async () => { fetched = true; return json({}); });
+  const response = await new Promise(resolve => {
+    const kept = context.onMessageListener({ type: 'SIGN_OUT' }, { id: 'test', tab: { id: 1 }, url: 'https://tamu.collegescheduler.com/' }, resolve);
+    if (kept !== true) setTimeout(() => resolve('no response'), 50);
+  });
+  assert.equal(response.ok, false);
+  assert.equal(fetched, false);
+  assert.equal(jar.size, 2);
+});
+
+test('the popup can sign out, also when opened in a tab (D-021)', async () => {
+  const { context, jar } = setup(async () => json({}));
+  const response = await new Promise(resolve => {
+    context.onMessageListener({ type: 'SIGN_OUT' }, { id: 'test', tab: { id: 2 }, url: 'chrome-extension://test/index.html' }, resolve);
+  });
+  assert.equal(response.ok, true);
+  assert.equal(jar.size, 0);
 });

@@ -45,6 +45,8 @@ const html = (route: Route, file: string) =>
  * This is a context-level route, so it also covers requests made by the extension's service
  * worker (the background script).
  */
+export const E2E_ACCESS_TOKEN = 'e2e-access';
+
 export async function installMocks(context: BrowserContext): Promise<Mocks> {
   const mocks: Mocks = {
     stats: [],
@@ -104,6 +106,10 @@ export async function installMocks(context: BrowserContext): Promise<Mocks> {
     if (pathname === `/sections/${TERM_CODE}/course/CSCE121/professors/details`) return json(route, { professors: PROFESSORS });
     if (/^\/professor\/[^/]+\/reviews$/.test(pathname)) return json(route, REVIEWS);
     if (pathname === '/professor/find') return json(route, { matches: [] });
+    // A test can sign in by setting the st-access-token cookie to E2E_ACCESS_TOKEN.
+    const signedIn = request.headers()['authorization'] === `Bearer ${E2E_ACCESS_TOKEN}`;
+    if (pathname === '/users/me' && signedIn) return json(route, { primary_email: 'student@example.test' });
+    if (pathname === '/auth/signout') return json(route, { status: 'OK' });
     // Signed out: the extension shows "Not signed in" and a sign-in link.
     if (pathname === '/users/me' || pathname.startsWith('/users/tracking')) return json(route, { detail: 'Unauthorized' }, 401);
     return json(route, { detail: 'not mocked' }, 404);
