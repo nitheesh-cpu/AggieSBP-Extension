@@ -3,7 +3,11 @@
 const EXTERNAL_API_BASE = 'https://api-aggiesbp.nitheeshk.com';
 
 const REFRESH_ALARM = 'agsbp-session-refresh';
+// aggiesbp.com first: the site moved there on 2026-11-24. It is an optional host permission
+// granted on connect.html; without it chrome.cookies.get throws and readCookie returns null,
+// so the source is skipped. The old address stays for sessions made before the move (D-020).
 const SESSION_SOURCES = [
+  { web: 'https://aggiesbp.com', api: EXTERNAL_API_BASE },
   { web: 'https://aggieschedulebuilderplus.vercel.app', api: EXTERNAL_API_BASE },
   { web: 'https://aggieschedulebuilderplus-dev.vercel.app', api: EXTERNAL_API_BASE },
   { web: 'http://localhost:3000', api: 'http://localhost:8000' },
@@ -341,6 +345,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'AUTH_STATUS') {
     getAuthStatus().then(sendResponse);
     return true;
+  }
+  if (message.type === 'OPEN_CONNECT') {
+    // Content scripts cannot ask for permissions or open extension pages themselves.
+    const from = ['account-status', 'popup', 'onboarding'].includes(message.from) ? message.from : 'connect';
+    void chrome.tabs.create({ url: chrome.runtime.getURL(`connect.html?from=${from}`) });
+    sendResponse({ ok: true });
+    return;
   }
   if (message.type === 'USAGE_EVENT') {
     handleUsageMessage(message, sender);

@@ -1,7 +1,7 @@
-import { withUtm } from '../config/constants';
+import { SITE_ORIGIN, withUtm } from '../config/constants';
 
-const ACCOUNT_URL = withUtm('https://aggieschedulebuilderplus.vercel.app/profile/alerts', 'account-status');
-const LOGIN_URL = withUtm('https://aggieschedulebuilderplus.vercel.app/auth?redirectToPath=%2Fprofile%2Falerts', 'account-status');
+const ACCOUNT_URL = withUtm(`${SITE_ORIGIN}/profile/alerts`, 'account-status');
+const LOGIN_URL = withUtm(`${SITE_ORIGIN}/auth?redirectToPath=%2Fprofile%2Falerts`, 'account-status');
 
 export function createAccountStatus(): HTMLElement {
   const row = document.createElement('div');
@@ -35,7 +35,15 @@ export function createAccountStatus(): HTMLElement {
     });
   };
   link.addEventListener('click', event => {
-    if (!link.hasAttribute('href')) { event.preventDefault(); refresh(); }
+    if (!link.hasAttribute('href')) { event.preventDefault(); refresh(); return; }
+    // Sign in goes through connect.html, which asks for access to aggiesbp.com first (D-020).
+    // The href stays as a fallback for middle-click and if the message fails.
+    if (row.dataset.state === 'signed_out') {
+      event.preventDefault();
+      chrome.runtime.sendMessage({ type: 'OPEN_CONNECT', from: 'account-status' }, () => {
+        if (chrome.runtime.lastError) window.open(LOGIN_URL, '_blank', 'noopener');
+      });
+    }
   });
   const onFocus = (): void => {
     if (row.isConnected) refresh();

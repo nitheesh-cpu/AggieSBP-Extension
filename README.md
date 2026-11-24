@@ -2,7 +2,7 @@
 
 A Chrome and Firefox extension that puts professor grades, ratings and review summaries right inside Texas A&M's registration site.
 
-**Site:** https://aggieschedulebuilderplus.vercel.app · **Frontend:** [AggieSBP-Frontend](https://github.com/nitheesh-cpu/AggieSBP-Frontend) · **Backend:** [AggieSBP-Backend](https://github.com/nitheesh-cpu/AggieSBP-Backend)
+**Site:** https://aggiesbp.com (moved from aggieschedulebuilderplus.vercel.app in November 2026; the old address redirects) · **Frontend:** [AggieSBP-Frontend](https://github.com/nitheesh-cpu/AggieSBP-Frontend) · **Backend:** [AggieSBP-Backend](https://github.com/nitheesh-cpu/AggieSBP-Backend)
 
 ![Professor panel on a College Scheduler sections page](images/SectionPage-v3.png)
 
@@ -25,10 +25,11 @@ A Chrome and Firefox extension that puts professor grades, ratings and review su
 | `cookies` | Reuse your AggieSB+ sign-in for seat alerts |
 | `alarms` | Keep that session fresh |
 | `activeTab` | Popup access to the current tab |
+| Access to `aggiesbp.com` (optional) | Read your sign-in on the site. Asked for once, on a click, when you sign in from the extension |
 
 No remote code. Course data only goes to AggieSB+ when you click import.
 
-Anonymous usage counts (sidebar opened, courses imported, and so on, with no names, courses, grades or professors) go to the AggieSB+ Umami instance from the background script (`src/background.ts`). Users can turn them off under Settings in the popup (`usageStatsEnabled` in `chrome.storage.sync`). Firefox builds send nothing unless the user grants the optional `technicalAndInteraction` data collection permission. The privacy policy is at https://aggieschedulebuilderplus.vercel.app/privacy (source: `frontend/src/app/privacy/page.tsx`); keep it in sync when the event list changes.
+Anonymous usage counts (sidebar opened, courses imported, and so on, with no names, courses, grades or professors) go to the AggieSB+ Umami instance from the background script (`src/background.ts`). Users can turn them off under Settings in the popup (`usageStatsEnabled` in `chrome.storage.sync`). Firefox builds send nothing unless the user grants the optional `technicalAndInteraction` data collection permission. The privacy policy is at https://aggiesbp.com/privacy (source: `frontend/src/app/privacy/page.tsx`); keep it in sync when the event list changes.
 
 ## Development
 

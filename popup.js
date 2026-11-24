@@ -220,8 +220,8 @@ function checkAuthState() {
                     <span class="auth-info-desc">${description}</span>
                 </div>
             </div>
-            ${signedIn ? '<a href="https://aggieschedulebuilderplus.vercel.app/profile/alerts" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="grid-column: 1 / -1;">Manage my alerts ↗</a>'
-                : signedOut ? '<a href="https://aggieschedulebuilderplus.vercel.app/auth?redirectToPath=%2Fprofile%2Falerts" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="grid-column: 1 / -1;">Sign in to AggieSB+ ↗</a>'
+            ${signedIn ? '<a href="https://aggiesbp.com/profile/alerts" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="grid-column: 1 / -1;">Manage my alerts ↗</a>'
+                : signedOut ? '<a href="connect.html?from=popup" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="grid-column: 1 / -1;">Sign in to AggieSB+ ↗</a>'
                 : '<button type="button" id="retry-auth" class="btn btn-secondary">Retry</button>'}
         `;
         const email = document.getElementById('account-email');
@@ -235,7 +235,7 @@ window.addEventListener('focus', checkAuthState);
 let authRecheckTimer;
 chrome.cookies.onChanged.addListener(function (change) {
     if (!['st-access-token', 'st-refresh-token'].includes(change.cookie.name)) return;
-    if (!['aggieschedulebuilderplus.vercel.app', 'aggieschedulebuilderplus-dev.vercel.app'].includes(change.cookie.domain.replace(/^\./, ''))) return;
+    if (!['aggiesbp.com', 'aggieschedulebuilderplus.vercel.app', 'aggieschedulebuilderplus-dev.vercel.app'].includes(change.cookie.domain.replace(/^\./, ''))) return;
     clearTimeout(authRecheckTimer);
     authRecheckTimer = setTimeout(checkAuthState, 250);
 });

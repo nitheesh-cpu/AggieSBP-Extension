@@ -3,7 +3,10 @@ export const DEBUG_MODE = import.meta.env.DEV === true;
 
 export const API_BASE_URL = 'https://tamu.collegescheduler.com/api';
 export const EXTERNAL_API_BASE = 'https://api-aggiesbp.nitheeshk.com';
-export const COURSE_DETAILS_BASE = 'https://aggieschedulebuilderplus.vercel.app';
+// The website moved here from aggieschedulebuilderplus.vercel.app on 2026-11-24 (D-020).
+// The old address 308-redirects, so links in older builds keep working.
+export const SITE_ORIGIN = 'https://aggiesbp.com';
+export const COURSE_DETAILS_BASE = SITE_ORIGIN;
 
 /**
  * Tags a link into the website so its analytics can tell extension traffic

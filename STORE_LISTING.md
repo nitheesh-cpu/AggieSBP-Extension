@@ -6,7 +6,7 @@ Compare professors and get real-time seat alerts directly on TAMU registration p
 ---
 
 ## Privacy Policy URL
-https://aggieschedulebuilderplus.vercel.app/privacy
+https://aggiesbp.com/privacy
 
 ---
 
@@ -35,7 +35,7 @@ Make informed choices with data-driven professor profiles.
 • **Compare Feature**: Select multiple professors to view a side-by-side breakdown on the AggieSBP website.
 
 ### 🔒 Privacy & Performance
-• **Privacy First**: No personal data is collected and your registration choices stay private. The extension sends anonymous usage counts (like "sidebar opened"), which you can turn off in Settings. Privacy policy: https://aggieschedulebuilderplus.vercel.app/privacy
+• **Privacy First**: No personal data is collected and your registration choices stay private. The extension sends anonymous usage counts (like "sidebar opened"), which you can turn off in Settings. Privacy policy: https://aggiesbp.com/privacy
 • **Lightweight**: Optimized to run fast without slowing down your browser.
 • **Official Data**: All insights are powered by the AggieSBP platform.
 
@@ -50,4 +50,4 @@ Make informed choices with data-driven professor profiles.
 ---
 
 *Works exclusively with tamu.collegescheduler.com*
-*Data provided by AggieSBP (aggieschedulebuilderplus.vercel.app)*
+*Data provided by AggieSB+ (aggiesbp.com)*

@@ -10,6 +10,9 @@
     "cookies",
     "alarms"
   ],
+  "optional_host_permissions": [
+    "https://aggiesbp.com/*"
+  ],
   "host_permissions": [
     "https://tamu.collegescheduler.com/*",
     "https://api-aggiesbp.nitheeshk.com/*",

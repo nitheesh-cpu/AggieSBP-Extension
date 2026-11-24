@@ -116,3 +116,28 @@ test('localhost session is never used against production', async () => {
   jar.set('http://localhost:3000:st-access-token', { value: 'local-access' });
   assert.equal((await context.getAuthStatus()).state, 'signed_out');
 });
+
+const NEW_WEB = 'https://aggiesbp.com';
+
+test('session on the new domain is used and preferred over the old one (D-020)', async () => {
+  const { context, jar } = setup(async (_url, init) => (
+    new Headers(init.headers).get('Authorization') === 'Bearer new-domain-access'
+      ? json({ primary_email: 'student@example.test' }) : json({}, 401)
+  ));
+  jar.set(`${NEW_WEB}:st-access-token`, { name: 'st-access-token', value: 'new-domain-access' });
+  const result = await context.getAuthStatus();
+  assert.equal(result.state, 'signed_in');
+});
+
+test('without access to the new domain the old session still works (D-020)', async () => {
+  const { context } = setup(async (_url, init) => (
+    new Headers(init.headers).get('Authorization') === 'Bearer old-access'
+      ? json({ primary_email: 'student@example.test' }) : json({}, 401)
+  ));
+  const get = context.chrome.cookies.get;
+  context.chrome.cookies.get = async details => {
+    if (details.url === NEW_WEB) throw new Error('No host permissions for cookies at url');
+    return get(details);
+  };
+  assert.equal((await context.getAuthStatus()).state, 'signed_in');
+});

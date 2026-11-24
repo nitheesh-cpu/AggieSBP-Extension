@@ -30,7 +30,7 @@ test.describe('College Scheduler: course sections page', () => {
     await expect(rivera.locator('.prof-grades-legend')).toContainText('A: 50%');
 
     // Links go to the AggieSB+ professor page and Rate My Professors.
-    await expect(rivera.getByRole('link', { name: 'Professor', exact: true })).toHaveAttribute('href', /aggieschedulebuilderplus\.vercel\.app\/professor\/prof-rivera\?.*utm_source=extension/);
+    await expect(rivera.getByRole('link', { name: 'Professor', exact: true })).toHaveAttribute('href', /aggiesbp\.com\/professor\/prof-rivera\?.*utm_source=extension/);
     await expect(rivera.getByRole('link', { name: /Rate My Professors/ })).toHaveAttribute('href', 'https://www.ratemyprofessors.com/professor/123456');
 
     await expect(cards.filter({ hasText: 'Priya Natarajan' }).locator('.prof-rating-scope').nth(1)).toContainText('3.9 / 5');
@@ -80,7 +80,7 @@ test.describe('College Scheduler: current schedule page', () => {
 
     // A new tab opens on AggieSB+ with the two meeting patterns read off the page.
     const fitPage = await opened;
-    await expect(fitPage).toHaveURL(/aggieschedulebuilderplus\.vercel\.app\/discover\/fit\?importSchedule=/);
+    await expect(fitPage).toHaveURL(/aggiesbp\.com\/discover\/fit\?importSchedule=/);
     const url = new URL(fitPage.url());
     expect(url.searchParams.get('utm_source')).toBe('extension');
     expect(url.searchParams.get('utm_medium')).toBe('fit-import');
@@ -97,7 +97,7 @@ test.describe('College Scheduler: current schedule page', () => {
     await toggleButton(page).click();
     const opened = context.waitForEvent('page');
     await page.locator('#fit-open-btn').click();
-    await expect(await opened).toHaveURL(/aggieschedulebuilderplus\.vercel\.app\/discover\/fit\?utm_source=extension&utm_medium=fit-open$/);
+    await expect(await opened).toHaveURL(/aggiesbp\.com\/discover\/fit\?utm_source=extension&utm_medium=fit-open$/);
   });
 });
 
@@ -115,7 +115,7 @@ test.describe('College Scheduler: any other page', () => {
     await expect(account).toContainText('Not signed in');
     const signIn = account.getByRole('link', { name: /Sign in/ });
     await expect(signIn).toBeVisible();
-    await expect(signIn).toHaveAttribute('href', /aggieschedulebuilderplus\.vercel\.app\/auth\?redirectToPath=%2Fprofile%2Falerts/);
+    await expect(signIn).toHaveAttribute('href', /aggiesbp\.com\/auth\?redirectToPath=%2Fprofile%2Falerts/);
 
     await expect(page.locator('#prof-sidebar-tab-alerts .aggiesbp-alerts-title')).toHaveText('Seat Alerts');
     await expect(page.getByText('You are not watching any sections yet.')).toBeVisible();
@@ -125,5 +125,22 @@ test.describe('College Scheduler: any other page', () => {
     // No professor lookups on this kind of page.
     expect(mocks.requests.filter(request => request.includes('/professors/details'))).toEqual([]);
     expect(mocks.unmocked).toEqual([]);
+  });
+
+  test('Sign in opens the connect page, which asks for access to aggiesbp.com first (D-020)', async ({ context, extensionId, openPage }) => {
+    const page = await openPage(URLS.options);
+    await toggleButton(page).click();
+    const account = panel(page).locator('.prof-account-status');
+    await expect(account).toContainText('Not signed in');
+
+    const opened = context.waitForEvent('page');
+    await account.getByRole('link', { name: /Sign in/ }).click();
+    const connect = await opened;
+    await expect(connect).toHaveURL(`chrome-extension://${extensionId}/connect.html?from=account-status`);
+    // The optional permission is not granted yet, so it explains the move instead of redirecting.
+    await expect(connect.getByText('AggieSB+ moved to aggiesbp.com.')).toBeVisible();
+    await expect(connect.getByRole('button', { name: 'Allow and sign in' })).toBeVisible();
+    await expect(connect.getByRole('link', { name: 'Sign in without connecting' }))
+      .toHaveAttribute('href', /^https:\/\/aggiesbp\.com\/auth\?redirectToPath=%2Fprofile%2Falerts&utm_source=extension&utm_medium=account-status$/);
   });
 });

@@ -36,6 +36,7 @@ export default defineConfig({
       input: {
         main: './index.html',
         onboarding: './onboarding.html',
+        connect: './connect.html',
         background: './src/background.ts',
         // Content scripts are built separately as IIFEs (vite.content.config.ts).
         // Intentional: do not add them here. See docs/context/gotchas.md G-001

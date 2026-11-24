@@ -65,7 +65,7 @@ test.describe('Popup', () => {
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const link = page.getByRole('link', { name: 'Privacy policy' });
     await expect(link).toBeVisible();
-    await expect(link).toHaveAttribute('href', 'https://aggieschedulebuilderplus.vercel.app/privacy');
+    await expect(link).toHaveAttribute('href', 'https://aggiesbp.com/privacy');
     await expect(link).toHaveAttribute('target', '_blank');
     await expect(link).toHaveAttribute('rel', /noopener/);
   });

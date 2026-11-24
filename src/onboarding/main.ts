@@ -1,5 +1,5 @@
 import './onboarding.css';
-import { withUtm } from '../config/constants';
+import { SITE_ORIGIN, withUtm } from '../config/constants';
 
 /**
  * Interactive onboarding tour shown after install.
@@ -10,8 +10,7 @@ import { withUtm } from '../config/constants';
  * The panel markup mirrors professors-panel.ts and reuses its stylesheet.
  */
 
-const SITE_URL = 'https://aggieschedulebuilderplus.vercel.app';
-const LOGIN_URL = withUtm(`${SITE_URL}/auth?redirectToPath=%2Fprofile%2Falerts`, 'onboarding');
+const LOGIN_URL = withUtm(`${SITE_ORIGIN}/auth?redirectToPath=%2Fprofile%2Falerts`, 'onboarding');
 const SCHEDULER_URL = 'https://tamu.collegescheduler.com/';
 const TOUR_DONE_KEY = 'onboardingCompleted';
 
@@ -817,7 +816,8 @@ function showFinish(): void {
      <p class="tour-muted">You can replay this tour any time from the extension's Help tab.</p>`,
     [
       { label: 'Replay tour', onClick: () => { watched.length = 0; currentScene = null; tour.start(); } },
-      { label: 'Create account', href: LOGIN_URL },
+      // Inside the extension, go through connect.html so it asks for access to aggiesbp.com first (D-020).
+      { label: 'Create account', href: hasStorage ? 'connect.html?from=onboarding' : LOGIN_URL },
       { label: 'Open College Scheduler', primary: true, href: SCHEDULER_URL },
     ]);
 }

@@ -3,7 +3,7 @@
 export const COLLEGE_SCHEDULER = 'https://tamu.collegescheduler.com';
 export const HOWDY = 'https://howdy.tamu.edu';
 export const API = 'https://api-aggiesbp.nitheeshk.com';
-export const SITE = 'https://aggieschedulebuilderplus.vercel.app';
+export const SITE = 'https://aggiesbp.com';
 export const STATS = 'https://stats.nitheeshk.com';
 
 export const TERM_DESC = 'Spring 2027 - College Station';
