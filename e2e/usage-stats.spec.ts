@@ -3,7 +3,7 @@ import { URLS } from './helpers/data';
 
 // Allowed in the request body: the Umami envelope and, per event, small enum/count fields.
 const ENVELOPE_KEYS = ['website', 'hostname', 'url', 'title', 'language', 'screen', 'name', 'data'];
-const DATA_KEYS = ['page', 'site', 'version', 'action', 'source', 'courses', 'completed', 'inProgress', 'planned', 'terms', 'blocks', 'browser', 'previousVersion'];
+const DATA_KEYS = ['page', 'site', 'version', 'action', 'source', 'courses', 'completed', 'inProgress', 'planned', 'terms', 'blocks', 'browser', 'previousVersion', 'weight'];
 
 test.describe('Anonymous usage stats', () => {
   test('a sections page sends coarse events with no personal or course data', async ({ openPage, mocks }) => {
@@ -13,14 +13,18 @@ test.describe('Anonymous usage stats', () => {
     await expect(panel(page)).not.toHaveClass(/collapsed/);
     await expect(panel(page).locator('.prof-card')).toHaveCount(2);
 
-    const enhanced = await mocks.waitForStat('ext-page-enhanced');
-    expect(enhanced.data).toMatchObject({ page: 'sections', site: 'collegescheduler' });
-    expect(enhanced.url).toBe('/extension/collegescheduler/sections');
-    // Unpacked builds are kept apart from store installs in the stats.
-    expect(enhanced.hostname).toBe('extension-dev.aggiesbp');
-
+    // ext-panel-open is always sent; ext-page-enhanced only for 1 in 5 loads (parent D-025),
+    // so it can't be waited for.
     const opened = await mocks.waitForStat('ext-panel-open');
     expect(opened.data).toMatchObject({ page: 'sections', site: 'collegescheduler' });
+    expect(opened.url).toBe('/extension/collegescheduler/sections');
+    // Unpacked builds are kept apart from store installs in the stats.
+    expect(opened.hostname).toBe('extension-dev.aggiesbp');
+
+    // When this load was sampled in, the event carries its weight.
+    for (const enhanced of mocks.stats.filter(event => event.name === 'ext-page-enhanced')) {
+      expect(enhanced.data).toMatchObject({ page: 'sections', site: 'collegescheduler', weight: 5 });
+    }
 
     // Everything sent, including anything else that arrives, is on the allowlist and anonymous.
     for (const event of mocks.stats) {
@@ -34,9 +38,11 @@ test.describe('Anonymous usage stats', () => {
 
   test('with the toggle off, nothing is sent to the stats server', async ({ context, extensionId, serviceWorker, openPage, mocks }) => {
     // Control: with stats on, a page view is counted, so the checks below could have caught a send.
+    // (ext-panel-open, not the sampled ext-page-enhanced, so the control never depends on chance.)
     const first = await openPage(URLS.sections);
     await expect(toggleButton(first)).toBeVisible();
-    await mocks.waitForStat('ext-page-enhanced', event => event.data.page === 'sections');
+    await toggleButton(first).click();
+    await mocks.waitForStat('ext-panel-open', event => event.data.page === 'sections');
 
     // Turn stats off in the popup, like a user would.
     const popup = await context.newPage();
