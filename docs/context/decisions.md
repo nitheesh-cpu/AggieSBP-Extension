@@ -142,3 +142,10 @@ Cross-repo contracts (API shapes, URL handoffs to the website) are also recorded
 **Rejected:** a sign-out in the College Scheduler sidebar (little space, not a registration-time action); forgetting the session in the extension only (it would come back from the site's cookies on the next check); adding `/auth/signout` to `fetchWithAuth` (content scripts can reach that).
 **Where:** `src/background.ts` (`signOut`, `revokeSession`, `SIGN_OUT`), `popup.js`, `tests/auth-session.test.cjs`, `e2e/popup.spec.ts`, `e2e/helpers/mocks.ts`.
 **Status:** active in 3.3.5.
+
+### D-022: `ext-page-enhanced` is sampled; the connect page reports `ext-access-prompt`  (2026-11-26)
+**Decision:** `reportSampled` (`src/utils/usage.ts`) sends `ext-page-enhanced` for 1 in 5 page loads with `weight: 5`; one draw per load and event, so a load is either in or out. The background allow-list accepts only the number 5 for `weight` (a string `'5'` or another number is dropped). The connect page sends `ext-access-prompt` with `result` `shown` (once per load), `granted` or `denied` (also when `permissions.request` throws).
+**Why:** `ext-page-enhanced` was 28% of Umami events and is only used for the ratio against `ext-panel-open`. Sidebar opens fell after 3.3.5 asked for site access on a click (D-020); the new event shows how many users reach and accept that prompt. It does not cover the College Scheduler sidebar itself.
+**Rejected:** sampling `ext-panel-open` (low volume, needs exact counts); a daily rollup (no place to keep state without a new permission).
+**Where:** `src/utils/usage.ts`, `src/background.ts`, `src/content/main.ts`, `src/content/howdy.ts`, `src/connect/main.ts`, `tests/usage-stats.test.cjs`.
+**Status:** not released yet (3.3.5 shipped without it). Firefox sends no analytics without data-collection consent, so it has no data.

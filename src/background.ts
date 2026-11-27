@@ -117,18 +117,20 @@ const USAGE_STATS_KEY = 'usageStatsEnabled';
 type Value = string | number;
 type Data = Record<string, Value>;
 /** Per event: allowed data keys, each either an enum of strings or a small count. */
-type Schema = Record<string, readonly string[] | 'count'>;
+type Schema = Record<string, readonly (string | number)[] | 'count'>;
 
 const PAGES = ['sections', 'current-schedule', 'scheduler', 'curriculum', 'planner', 'evaluate', 'other'] as const;
 
 /** Events content scripts and the popup may ask for. Anything else is dropped. */
 const MESSAGE_EVENTS: Record<string, Schema> = {
-  'ext-page-enhanced': { page: PAGES },
+  // weight: the sampling factor (1 in N page loads sent), only 5 is accepted.
+  'ext-page-enhanced': { page: PAGES, weight: [5] },
   'ext-panel-open': { page: PAGES },
   'ext-professor-action': { action: ['details', 'rmp', 'expand-summary'] },
   'ext-seat-alert-add': { source: ['scan', 'manual'] },
   'ext-howdy-import': { courses: 'count', completed: 'count', inProgress: 'count', planned: 'count', terms: 'count' },
   'ext-fit-import': { blocks: 'count' },
+  'ext-access-prompt': { result: ['shown', 'granted', 'denied'] },
   'ext-popup-open': {},
 };
 
@@ -157,7 +159,7 @@ function sanitize(schema: Schema, data: unknown): Data | null {
       if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) return null;
       out[key] = Math.min(value, MAX_COUNT);
     } else {
-      if (typeof value !== 'string' || !rule.includes(value)) return null;
+      if ((typeof value !== 'string' && typeof value !== 'number') || !rule.includes(value)) return null;
       out[key] = value;
     }
   }

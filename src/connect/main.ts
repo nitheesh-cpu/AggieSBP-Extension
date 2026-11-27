@@ -1,4 +1,5 @@
 import { SITE_ORIGIN, withUtm } from '../config/constants';
+import { reportUsage } from '../utils/usage';
 
 /**
  * Connect page (connect.html), opened by every "Sign in" link in the extension.
@@ -33,9 +34,11 @@ function goToSignIn(): void {
 allow.addEventListener('click', () => {
   // Call request() straight from the click: Firefox refuses it after an await.
   chrome.permissions.request(PERMISSION).then(granted => {
+    reportUsage('ext-access-prompt', { result: granted ? 'granted' : 'denied' });
     if (granted) { goToSignIn(); return; }
     status.textContent = 'Not connected. You can still sign in, but the extension will show you as signed out until you allow access here.';
   }).catch(() => {
+    reportUsage('ext-access-prompt', { result: 'denied' });
     status.textContent = 'Your browser could not ask for access. Update it, or sign in without connecting.';
   });
 });
@@ -44,7 +47,9 @@ chrome.permissions.contains(PERMISSION).then(has => {
   if (has) { goToSignIn(); return; }
   checking.hidden = true;
   ask.hidden = false;
+  reportUsage('ext-access-prompt', { result: 'shown' }, { oncePerLoad: true });
 }).catch(() => {
   checking.hidden = true;
   ask.hidden = false;
+  reportUsage('ext-access-prompt', { result: 'shown' }, { oncePerLoad: true });
 });

@@ -113,3 +113,41 @@ test('install and update events', async () => {
   assert.equal(sent[1].body.payload.data.previousVersion, '9.9.8');
   assert.equal(sent[0].body.payload.data.browser, 'chrome');
 });
+
+test('page-enhanced accepts only weight 5; access prompt accepts only known results', async () => {
+  const { context, sent } = setup();
+  const src = { tab: TAB, url: SCHEDULER };
+  context.handleUsageMessage({ name: 'ext-page-enhanced', data: { page: 'sections', weight: 5 } }, src);
+  context.handleUsageMessage({ name: 'ext-page-enhanced', data: { page: 'planner', weight: 6 } }, src);
+  context.handleUsageMessage({ name: 'ext-page-enhanced', data: { page: 'evaluate', weight: '5' } }, src);
+  context.handleUsageMessage({ name: 'ext-access-prompt', data: { result: 'maybe' } }, { url: 'chrome-extension://abc/connect.html' });
+  context.handleUsageMessage({ name: 'ext-access-prompt', data: { result: 'shown' } }, { url: 'chrome-extension://abc/connect.html' });
+  await flush();
+  assert.equal(sent.length, 2);
+  assert.equal(sent[0].body.payload.data.weight, 5);
+  assert.equal(sent[1].body.payload.name, 'ext-access-prompt');
+  assert.equal(sent[1].body.payload.data.result, 'shown');
+});
+
+test('sampling helper: 1 in 5, loads are sent at most once with weight 5', () => {
+  const sentMsgs = [];
+  const context = {
+    exports: {}, JSON, Math, Set, screen: { width: 1, height: 2 },
+    chrome: { runtime: { sendMessage: (m) => sentMsgs.push(m), lastError: null } },
+  };
+  vm.createContext(context);
+  const code = ts.transpileModule(fs.readFileSync('src/utils/usage.ts', 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  vm.runInContext(code, context);
+  const u = context.exports;
+  assert.equal(u.shouldSample(0.19), true);
+  assert.equal(u.shouldSample(0.2), false);
+  assert.equal(u.shouldSample(0.99), false);
+  context.Math = { random: () => 0.1 };
+  vm.runInContext('Math.random = () => 0.1', context);
+  u.reportSampled('ext-page-enhanced', { page: 'sections' });
+  u.reportSampled('ext-page-enhanced', { page: 'sections' });
+  assert.equal(sentMsgs.length, 1);
+  assert.deepEqual({ ...sentMsgs[0].data }, { page: 'sections', weight: 5 });
+});

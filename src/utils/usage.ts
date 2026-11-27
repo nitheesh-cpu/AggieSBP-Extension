@@ -11,7 +11,15 @@ export type UsageEvent =
   | 'ext-professor-action'
   | 'ext-seat-alert-add'
   | 'ext-howdy-import'
-  | 'ext-fit-import';
+  | 'ext-fit-import'
+  | 'ext-access-prompt';
+
+/** Page loads are sampled 1 in SAMPLE_WEIGHT; each sent event carries weight: SAMPLE_WEIGHT. */
+export const SAMPLE_WEIGHT = 5;
+
+export function shouldSample(random: number = Math.random()): boolean {
+  return random < 1 / SAMPLE_WEIGHT;
+}
 
 const sentThisLoad = new Set<string>();
 
@@ -33,4 +41,23 @@ export function reportUsage(
   } catch {
     /* extension was reloaded or updated under this page */
   }
+}
+
+/**
+ * High-volume events (one per page load): send 1 in SAMPLE_WEIGHT with
+ * weight: SAMPLE_WEIGHT so reviewers can sum weight to estimate the true count.
+ * Always once per load; the sample is drawn once, so a load is either in or out.
+ */
+export function reportSampled(
+  name: UsageEvent,
+  data: Record<string, string | number> = {},
+): void {
+  const key = `${name}|${JSON.stringify(data)}`;
+  if (sentThisLoad.has(key)) return;
+  if (!shouldSample()) {
+    sentThisLoad.add(key);
+    return;
+  }
+  reportUsage(name, { ...data, weight: SAMPLE_WEIGHT }, { oncePerLoad: false });
+  sentThisLoad.add(key);
 }

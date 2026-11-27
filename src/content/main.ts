@@ -8,7 +8,7 @@ import { store } from '../state/store';
 import { isRegistrationPage, isCurrentSchedulePage } from '../utils/page-detector';
 import { debugLog } from '../utils/debug';
 import { exposeDebugUtils } from '../utils/debug';
-import { reportUsage } from '../utils/usage';
+import { reportSampled } from '../utils/usage';
 
 type PanelMode = 'professors' | 'schedule-fit' | 'alerts';
 
@@ -58,7 +58,7 @@ function panelModeForCurrentPage(): PanelMode {
 
     const mode = panelModeForCurrentPage();
     debugLog('Building sidebar:', mode, currentUrl);
-    reportUsage('ext-page-enhanced', { page: PAGE_LABEL[mode] }, { oncePerLoad: true });
+    reportSampled('ext-page-enhanced', { page: PAGE_LABEL[mode] });
 
     if (mode === 'professors') {
       // Shows the button right away with a loading state, then fills in professors.

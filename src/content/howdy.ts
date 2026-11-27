@@ -18,7 +18,7 @@ import {
   summarize,
   type HowdyCourse,
 } from '../utils/howdy-planner';
-import { reportUsage } from '../utils/usage';
+import { reportSampled, reportUsage } from '../utils/usage';
 
 // Must be the production site in released builds (never localhost). See docs/context/gotchas.md G-009
 const SITE_URL = 'https://aggiesbp.com';
@@ -238,7 +238,7 @@ function checkUrl() {
   lastUrl = key;
   if (isDegreePlannerUrl(location.href)) {
     mount();
-    reportUsage('ext-page-enhanced', { page: plannerPage(location.href) }, { oncePerLoad: true });
+    reportSampled('ext-page-enhanced', { page: plannerPage(location.href) });
     scheduleRender(); // curriculum -> planner keeps the panel; refresh its steps
   } else unmount();
 }
